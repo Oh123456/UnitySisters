@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: e32270aa38f4b664b90f04cc475fdb81
+timeCreated: 1488638448
+licenseType: Store
+ShaderImporter:
+  defaultTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 204862
+  packageName: SD chan Animation bundle
+  packageVersion: 1.0
+  assetPath: Assets/AssetStore/SD Unity-Chan Haon Custom/Shader/Unity-chan Toon Shader
+    Ver 2.0.6/ToonColor_ShadingGradeMap_AngelRing_StencilOut.shader
+  uploadId: 465867

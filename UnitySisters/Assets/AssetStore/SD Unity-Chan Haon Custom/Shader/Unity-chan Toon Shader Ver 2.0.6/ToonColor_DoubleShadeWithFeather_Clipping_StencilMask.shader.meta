@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 9c3978743d5db18448a8b945c723a6eb
+timeCreated: 1482812523
+licenseType: Store
+ShaderImporter:
+  defaultTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 204862
+  packageName: SD chan Animation bundle
+  packageVersion: 1.0
+  assetPath: Assets/AssetStore/SD Unity-Chan Haon Custom/Shader/Unity-chan Toon Shader
+    Ver 2.0.6/ToonColor_DoubleShadeWithFeather_Clipping_StencilMask.shader
+  uploadId: 465867
