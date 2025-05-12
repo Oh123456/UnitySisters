@@ -1,7 +1,7 @@
 fileFormatVersion: 2
 guid: 23416b2e958cfcd4b8947aec2f248a2b
 ModelImporter:
-  serializedVersion: 19301
+  serializedVersion: 20101
   internalIDToNameTable:
   - first:
       74: 1827226128182048838
@@ -53,7 +53,7 @@ ModelImporter:
       loopBlend: 0
       loopBlendOrientation: 1
       loopBlendPositionY: 1
-      loopBlendPositionXZ: 1
+      loopBlendPositionXZ: 0
       keepOriginalOrientation: 1
       keepOriginalPositionY: 1
       keepOriginalPositionXZ: 1
@@ -212,6 +212,7 @@ ModelImporter:
     useFileUnits: 1
     keepQuads: 0
     weldVertices: 1
+    bakeAxisConversion: 0
     preserveHierarchy: 0
     skinWeightsMode: 0
     maxBonesPerVertex: 4
@@ -221,6 +222,9 @@ ModelImporter:
     secondaryUVAngleDistortion: 8
     secondaryUVAreaDistortion: 15.000001
     secondaryUVHardAngle: 88
+    secondaryUVMarginMethod: 1
+    secondaryUVMinLightmapResolution: 40
+    secondaryUVMinObjectScale: 1
     secondaryUVPackMargin: 4
     useFileScale: 1
   tangentSpace:
@@ -1249,8 +1253,8 @@ ModelImporter:
   assetBundleVariant: 
 AssetOrigin:
   serializedVersion: 1
-  productId: 84992
-  packageName: Haon SD series Bundle
+  productId: 181515
+  packageName: SD Action Adventure Pack 3.0
   packageVersion: 3.1
-  assetPath: Assets/SD Unity-Chan Haon Custom/Animations/Common/RunA_Curve_FrontLeft.FBX
-  uploadId: 418201
+  assetPath: Assets/AssetStore/SD Unity-Chan Haon Custom/Animations/Common/RunA_Curve_FrontLeft.FBX
+  uploadId: 416067

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: abaf2020b803b6847b5c081ed22c05c5
+ShaderImporter:
+  defaultTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 181515
+  packageName: SD Action Adventure Pack 3.0
+  packageVersion: 3.1
+  assetPath: Assets/SD Unity-Chan Haon Custom/Shader/Unitychan_chara_eye.shader
+  uploadId: 416067

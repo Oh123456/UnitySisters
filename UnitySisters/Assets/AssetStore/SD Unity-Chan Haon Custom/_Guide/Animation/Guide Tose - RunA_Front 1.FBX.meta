@@ -1454,9 +1454,9 @@ ModelImporter:
   assetBundleVariant: 
 AssetOrigin:
   serializedVersion: 1
-  productId: 84992
-  packageName: Haon SD series Bundle
+  productId: 181515
+  packageName: SD Action Adventure Pack 3.0
   packageVersion: 3.1
-  assetPath: Assets/SD Unity-Chan Haon Custom/_Guide/Animation/Guide Tose - RunA_Front
-    1.FBX
-  uploadId: 418201
+  assetPath: Assets/AssetStore/SD Unity-Chan Haon Custom/_Guide/Animation/Guide Tose
+    - RunA_Front 1.FBX
+  uploadId: 416067

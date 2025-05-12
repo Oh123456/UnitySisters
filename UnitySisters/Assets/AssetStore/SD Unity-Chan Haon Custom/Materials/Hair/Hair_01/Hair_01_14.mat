@@ -207,12 +207,12 @@ Material:
     - _Use_1stAs2nd: 1
     - _Use_BaseAs1st: 1
     - _ZWrite: 1
-    - _simpleUI: 0
+    - _simpleUI: 2
     - _utsTechnique: 1
     - _utsVersion: 2.06
     m_Colors:
     - _1st_ShadeColor: {r: 0.89599466, g: 0.8006408, b: 0.9811321, a: 1}
-    - _2nd_ShadeColor: {r: 0.59011215, g: 0.6435489, b: 0.8396226, a: 1}
+    - _2nd_ShadeColor: {r: 0.7586464, g: 0.5882353, b: 0.8392157, a: 1}
     - _Ap_RimLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 0.7647059, g: 0.7647059, b: 0.7647059, a: 1}

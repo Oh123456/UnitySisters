@@ -1,7 +1,7 @@
 fileFormatVersion: 2
 guid: 77403a2653af63f45b64479a6fc74a38
 ModelImporter:
-  serializedVersion: 19301
+  serializedVersion: 20101
   internalIDToNameTable:
   - first:
       1: 100000
@@ -692,7 +692,7 @@ ModelImporter:
       loopBlendPositionXZ: 1
       keepOriginalOrientation: 1
       keepOriginalPositionY: 1
-      keepOriginalPositionXZ: 1
+      keepOriginalPositionXZ: 0
       heightFromFeet: 0
       mirror: 0
       bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
@@ -848,6 +848,7 @@ ModelImporter:
     useFileUnits: 1
     keepQuads: 0
     weldVertices: 1
+    bakeAxisConversion: 0
     preserveHierarchy: 0
     skinWeightsMode: 0
     maxBonesPerVertex: 4
@@ -857,6 +858,9 @@ ModelImporter:
     secondaryUVAngleDistortion: 8
     secondaryUVAreaDistortion: 15.000001
     secondaryUVHardAngle: 88
+    secondaryUVMarginMethod: 1
+    secondaryUVMinLightmapResolution: 40
+    secondaryUVMinObjectScale: 1
     secondaryUVPackMargin: 4
     useFileScale: 1
   tangentSpace:
@@ -2171,8 +2175,8 @@ ModelImporter:
   assetBundleVariant: 
 AssetOrigin:
   serializedVersion: 1
-  productId: 84992
-  packageName: Haon SD series Bundle
+  productId: 181515
+  packageName: SD Action Adventure Pack 3.0
   packageVersion: 3.1
-  assetPath: Assets/SD Unity-Chan Haon Custom/Animations/Common/StandA.FBX
-  uploadId: 418201
+  assetPath: Assets/AssetStore/SD Unity-Chan Haon Custom/Animations/Common/StandA.FBX
+  uploadId: 416067
