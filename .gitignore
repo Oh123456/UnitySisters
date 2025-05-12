@@ -76,3 +76,5 @@ crashlytics-build.properties
 UnitySisters/Library/
 UnitySisters/obj/
 UnitySisters/UserSettings/
+/Temp/
+Temp
