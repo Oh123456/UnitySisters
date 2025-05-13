@@ -12,13 +12,27 @@ namespace PureComponents
 
         public bool IsValid => isValid;
 
-        public void Destroy()
+        internal void Destroy()
         {
+            if (!isValid) return;
+
             isValid = false;
 
             if (this is IDestroyHandle destroyHandle)
-                destroyHandle.OnDestroy();
+            {
+                customMonoBehaviour.DestroyComponentQueue.Enqueue(destroyHandle);
+            }
         }
+
+        public static void Destroy(PureComponent pureComponent)
+        {
+            var mono = pureComponent.customMonoBehaviour;
+            if (mono == null)
+                return;
+
+            mono.RemoveComponent(pureComponent);
+        }
+
     }
 
 }
