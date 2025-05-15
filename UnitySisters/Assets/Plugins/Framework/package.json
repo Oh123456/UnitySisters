@@ -1,0 +1,12 @@
+{
+    "name": "com.ojk.framework",
+    "version": "0.4.0",
+    "displayName": "Unity Framework",
+    "description": "Unity Frameworks!! \n https://github.com/Oh123456/UnityFramework",
+    "unity": "2021.3",
+    "author": {
+      "name": "OJK",
+      "email": "dhwnsrud98@gmail.com"
+    },
+    "com.ojk.framework": "https://github.com/Oh123456/UnityFramework.git"
+}

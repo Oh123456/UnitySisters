@@ -1,0 +1,21 @@
+{
+    "name": "UnityFramework.Job",
+    "rootNamespace": "Framework.Core",
+    "references": [
+        "UnityFramework",
+        "Unity.Burst",
+        "Unity.Mathematics",
+        "Framework"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "USE_UNITYFRAMEWORK_JOBSYSTEM"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

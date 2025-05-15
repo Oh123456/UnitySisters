@@ -1,6 +1,7 @@
+using CoreSystem.PureComponents;
 using UnityEngine;
 
-public abstract class BaseCharacter : MonoBehaviour
+public abstract class BaseCharacter : CustomMonoBehaviour
 {
 
 }

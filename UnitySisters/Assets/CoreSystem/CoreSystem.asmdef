@@ -1,6 +1,0 @@
-{
-	"name": "CoreSystem",
-	"references": [
-    "UnityEngine"
-  ]
-}

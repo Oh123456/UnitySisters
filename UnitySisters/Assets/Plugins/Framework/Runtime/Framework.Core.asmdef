@@ -1,0 +1,22 @@
+{
+    "name": "Framework",
+    "rootNamespace": "",
+    "references": [
+        "UnityEngine",
+        "Unity.Mathematics",
+        "UniTask",
+        "UnityEditor.TestRunner",
+        "Unity.Addressables",
+        "UniTask.Addressables",
+        "Unity.ResourceManager"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
