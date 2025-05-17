@@ -8,9 +8,9 @@ namespace CoreSystem
     public partial class SceneController : MonoBehaviour
     {
 
-        private List<IUpdateHandle> updateHandles;
-        private List<ILateUpdateHandle> lateUpdateHandles;
-        private List<IFixedUpdateHandle> fixedUpdateHandles;
+        private List<IUpdateHandle> cachedUpdateHandles;
+        private List<ILateUpdateHandle> cachedLateUpdateHandles;
+        private List<IFixedUpdateHandle> cachedFixedUpdateHandles;
         private bool isDestructionScheduled;
 
         private void Awake()
@@ -20,23 +20,23 @@ namespace CoreSystem
 
         protected virtual void Update()
         {
-            int count = updateHandles.Count;
+            int count = cachedUpdateHandles.Count;
             for (int i = 0; i < count; i++)
-                updateHandles[i].Update();
+                cachedUpdateHandles[i].Update();
         }
 
         protected virtual void FixedUpdate()
         {
-            int count = fixedUpdateHandles.Count;
+            int count = cachedFixedUpdateHandles.Count;
             for (int i = 0; i < count; i++)
-                fixedUpdateHandles[i].FixedUpdate();
+                cachedFixedUpdateHandles[i].FixedUpdate();
         }
 
         protected virtual void LateUpdate()
         {
-            int count = lateUpdateHandles.Count;
+            int count = cachedLateUpdateHandles.Count;
             for (int i = 0; i < count; i++)
-                lateUpdateHandles[i].LateUpdate();
+                cachedLateUpdateHandles[i].LateUpdate();
 
             if (isDestructionScheduled) 
                 DestroyPureComponent();
@@ -45,9 +45,11 @@ namespace CoreSystem
         protected virtual void Initialize()
         {
             PureComponentManager updateManager = PureComponentManager.Instance;
-            updateHandles = updateManager.GetUpdateHandles();
-            lateUpdateHandles = updateManager.GetLateUpdateHandles();
-            fixedUpdateHandles = updateManager.GetFixedUpdateHandles();
+            UpdateHandleData updateHandleData = updateManager.UpdateHandleData;
+
+            cachedUpdateHandles = updateHandleData.UpdateHandles;
+            cachedLateUpdateHandles = updateHandleData.LateUpdateHandles;
+            cachedFixedUpdateHandles = updateHandleData.FixedUpdateHandles;
             isDestructionScheduled = false;
             updateManager.OnDestroyComponentQueue += OnDestroyComponentQueue;
         }
@@ -59,20 +61,20 @@ namespace CoreSystem
 
         private void DestroyPureComponent()
         {
-            var destroyComponentQueue = PureComponentManager.Instance.GetDestroyComponentQueue();
-            if (destroyComponentQueue.Count < 1)
-                return;
+            PureComponentManager pureComponentManager = PureComponentManager.Instance;
+            PureComponent pureComponent = pureComponentManager.DequeueDestroyComponent();
 
-            while (destroyComponentQueue.Count > 0)
+            while (pureComponent != null)
             {
-                PureComponent pureComponent = destroyComponentQueue.Dequeue();
                 if (pureComponent is IDestroyHandle destroyHandle)
                     destroyHandle.OnDestroy();
 
-                pureComponent.customMonoBehaviour.RemovePureComponent(pureComponent);
+                pureComponent.customMonoBehaviour.pureComponentData.RemovePureComponent(pureComponent);
 
                 if (pureComponent is System.IDisposable disposable)
                     disposable.Dispose();
+
+                pureComponent = pureComponentManager.DequeueDestroyComponent();
             }
 
             isDestructionScheduled = false;

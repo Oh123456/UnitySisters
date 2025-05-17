@@ -1,5 +1,4 @@
 using CoreSystem.PureComponents;
-using CoreSystem.PureComponents.Interfaces;
 using System.Collections.Generic;
 using UnityFramework.Singleton;
 
@@ -8,13 +7,9 @@ namespace CoreSystem
 	public class PureComponentManager : LazySingleton<PureComponentManager>
 	{
         #region Update
-        private List<IUpdateHandle> updateHandles = new List<IUpdateHandle>();
-        private List<ILateUpdateHandle> lateUpdateHandles = new List<ILateUpdateHandle>();
-        private List<IFixedUpdateHandle> fixedUpdateHandles = new List<IFixedUpdateHandle>();
+        private UpdateHandleData updateHandleData = new UpdateHandleData();
 
-        internal List<IUpdateHandle> GetUpdateHandles() => updateHandles;
-        internal List<ILateUpdateHandle> GetLateUpdateHandles() => lateUpdateHandles;
-        internal List<IFixedUpdateHandle> GetFixedUpdateHandles() => fixedUpdateHandles;
+        internal UpdateHandleData UpdateHandleData => updateHandleData;
         #endregion
 
 
@@ -23,8 +18,6 @@ namespace CoreSystem
 
         internal event System.Action OnDestroyComponentQueue;
 
-        internal Queue<PureComponent> GetDestroyComponentQueue() => destroyComponentQueue;
-
         internal void EnqueueDestroyComponent(PureComponent pureComponent)
         {
             if (destroyComponentQueue.Count == 0)
@@ -32,6 +25,14 @@ namespace CoreSystem
             destroyComponentQueue.Enqueue(pureComponent);
             
         }
+
+        internal PureComponent DequeueDestroyComponent()
+        {
+            if (destroyComponentQueue.Count == 0)
+                return null;
+            return destroyComponentQueue.Dequeue();
+        }
+
 
         #endregion
 

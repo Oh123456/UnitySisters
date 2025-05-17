@@ -22,4 +22,15 @@ namespace CoreSystem.PureComponents.Interfaces
         public void OnDestroy();
     }
 
+    public interface IEnableHandle
+    {
+        public void OnEnable();
+    }
+
+    public interface IDisableHandle
+    {
+        public void OnDisable();
+    }
+
+
 }
