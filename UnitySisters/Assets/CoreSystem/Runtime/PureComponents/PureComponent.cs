@@ -1,4 +1,4 @@
-using CoreSystem.PureComponents.Interfaces;
+﻿using CoreSystem.PureComponents.Interfaces;
 using UnityEngine;
 
 namespace CoreSystem.PureComponents

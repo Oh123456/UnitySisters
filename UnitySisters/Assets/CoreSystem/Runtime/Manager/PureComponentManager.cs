@@ -1,4 +1,4 @@
-using CoreSystem.PureComponents;
+﻿using CoreSystem.PureComponents;
 using System.Collections.Generic;
 using UnityFramework.Singleton;
 

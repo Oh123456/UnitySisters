@@ -1,6 +1,4 @@
-using CoreSystem.PureComponents.Interfaces;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace CoreSystem.PureComponents
 {

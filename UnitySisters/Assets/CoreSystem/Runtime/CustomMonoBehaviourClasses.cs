@@ -1,4 +1,4 @@
-using CoreSystem.PureComponents.Interfaces;
+ï»¿using CoreSystem.PureComponents.Interfaces;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,14 +10,14 @@ namespace CoreSystem.PureComponents
         {
             private Dictionary<System.Type, PureComponent> pureComponents = new Dictionary<System.Type, PureComponent>();
             /// <summary>
-            /// ÄÄÆ÷³ÍÆ® Ãß°¡
+            /// ì»´í¬ë„ŒíŠ¸ ì¶”ê°€
             /// </summary>
             public T AddPureComponent<T>(CustomMonoBehaviour customMonoBehaviour) where T : PureComponent, new()
             {
                 System.Type type = typeof(T);
                 if (pureComponents.TryGetValue(type, out PureComponent component))
                 {
-                    Debug.LogWarning($"{customMonoBehaviour.name} ¿¡ {type.Name}Àº ÀÌ¹Ì ÀÖ½À´Ï´Ù.");
+                    Debug.LogWarning($"{customMonoBehaviour.name} ì— {type.Name}ì€ ì´ë¯¸ ìˆìŠµë‹ˆë‹¤.");
                     return component as T;
                 }
 
@@ -37,7 +37,7 @@ namespace CoreSystem.PureComponents
             }
 
             /// <summary>
-            /// ¾÷µ¥ÀÌÆ® µî·Ï
+            /// ì—…ë°ì´íŠ¸ ë“±ë¡
             /// </summary>
             private void RegisterUpdate(PureComponent component)
             {
@@ -50,7 +50,7 @@ namespace CoreSystem.PureComponents
             }
 
             /// <summary>
-            /// ¾÷µ¥ÀÌÆ® ÇØÁö
+            /// ì—…ë°ì´íŠ¸ í•´ì§€
             /// </summary>
             private void Unregister(PureComponent component)
             {
@@ -63,7 +63,7 @@ namespace CoreSystem.PureComponents
             }
 
             /// <summary>
-            /// ÄÄÆ÷³ÍÆ®¸¦ Á¦°ÅÇÑ´Ù
+            /// ì»´í¬ë„ŒíŠ¸ë¥¼ ì œê±°í•œë‹¤
             /// </summary>
             /// <param name="pureComponent"></param>
             internal void RemovePureComponent(PureComponent pureComponent)
@@ -90,7 +90,7 @@ namespace CoreSystem.PureComponents
             }
 
             /// <summary>
-            /// ÄÄÆ÷³ÍÆ® Ã£±â
+            /// ì»´í¬ë„ŒíŠ¸ ì°¾ê¸°
             /// </summary>
             public T GetPureComponent<T>() where T : PureComponent
             {
@@ -104,7 +104,7 @@ namespace CoreSystem.PureComponents
             }
 
             /// <summary>
-            /// ÄÄÆ÷³ÍÆ® Ã£±â
+            /// ì»´í¬ë„ŒíŠ¸ ì°¾ê¸°
             /// </summary>
             public bool GetPureComponent<T>(out T pureComponent) where T : PureComponent
             {
