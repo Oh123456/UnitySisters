@@ -7,6 +7,7 @@ namespace CoreSystem.Input
     public class InputManager : LazySingleton<InputManager>
     {
         private IInputActionCollection2 actionCollection;
+        public IInputActionCollection2 ActionCollection => actionCollection;
         public T GetActionCollection<T>() where T : IInputActionCollection2 => (T)actionCollection;
 
         public void LoadInputSystem(InputActionAsset inputAsset)
@@ -29,7 +30,7 @@ namespace CoreSystem.Input
             }
 
             actionCollection.Enable();
-            Debug.Log($" 성공적으로 {type.Name} 인스턴스를 생성하고 Enable 했습니다.");
+            LogUtility.Log($" 성공적으로 {type.Name} 인스턴스를 생성하고 Enable 했습니다.");
         }
 
     }

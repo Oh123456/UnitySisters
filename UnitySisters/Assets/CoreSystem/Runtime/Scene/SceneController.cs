@@ -1,4 +1,4 @@
-﻿using CoreSystem.PureComponents;
+using CoreSystem.PureComponents;
 using CoreSystem.PureComponents.Interfaces;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,6 +7,17 @@ namespace CoreSystem
 {
     public partial class SceneController : MonoBehaviour
     {
+
+        //TODO:: 클래스 타입을 넣을수있게 고민해보자
+        [SerializeField]
+        private class Setting
+        { 
+     
+        }
+
+        [SerializeField]
+        private Setting setting;
+
 
         private List<IUpdateHandle> cachedUpdateHandles;
         private List<ILateUpdateHandle> cachedLateUpdateHandles;
@@ -44,6 +55,9 @@ namespace CoreSystem
 
         protected virtual void Initialize()
         {
+            // GameManager에 현재 씬정보를 넘겨준다
+            GameManager.Instance.currentSceneController = this;
+
             PureComponentManager updateManager = PureComponentManager.Instance;
             UpdateHandleData updateHandleData = updateManager.UpdateHandleData;
 
