@@ -1,8 +1,8 @@
-﻿using UnityEngine;
+using UnityEngine;
 
-namespace CoreSystem
+namespace CoreSystem.Scenes
 {
-    public partial class SceneController
+    public abstract partial class SceneController
     {
         private void OnValidate()
         {

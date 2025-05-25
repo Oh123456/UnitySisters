@@ -1,28 +1,19 @@
+using CoreSystem.Controllers;
 using CoreSystem.PureComponents;
 using CoreSystem.PureComponents.Interfaces;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CoreSystem
+namespace CoreSystem.Scenes
 {
-    public partial class SceneController : MonoBehaviour
+    public abstract partial class SceneController : MonoBehaviour
     {
-
-        //TODO:: 클래스 타입을 넣을수있게 고민해보자
-        [SerializeField]
-        private class Setting
-        { 
-     
-        }
-
-        [SerializeField]
-        private Setting setting;
-
-
         private List<IUpdateHandle> cachedUpdateHandles;
         private List<ILateUpdateHandle> cachedLateUpdateHandles;
         private List<IFixedUpdateHandle> cachedFixedUpdateHandles;
         private bool isDestructionScheduled;
+
+        protected BaseController controller;
 
         private void Awake()
         {
@@ -57,6 +48,13 @@ namespace CoreSystem
         {
             // GameManager에 현재 씬정보를 넘겨준다
             GameManager.Instance.currentSceneController = this;
+
+            InitializeUpdate();
+            controller = CreateController();
+        }
+
+        private void InitializeUpdate()
+        {
 
             PureComponentManager updateManager = PureComponentManager.Instance;
             UpdateHandleData updateHandleData = updateManager.UpdateHandleData;
@@ -94,6 +92,11 @@ namespace CoreSystem
             isDestructionScheduled = false;
         }
 
+
+        private void OnDestroy()
+        {
+            controller.Dispose();
+        }
 
     }
 }
