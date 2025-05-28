@@ -13,6 +13,8 @@ namespace CoreSystem.Scenes
         private List<IFixedUpdateHandle> cachedFixedUpdateHandles;
         private bool isDestructionScheduled;
 
+        [SerializeField] private Character defaultCharacter;
+
         protected BaseController controller;
 
         private void Awake()
@@ -51,6 +53,7 @@ namespace CoreSystem.Scenes
 
             InitializeUpdate();
             controller = CreateController();
+            CreateCharacter();
         }
 
         private void InitializeUpdate()
@@ -64,6 +67,15 @@ namespace CoreSystem.Scenes
             cachedFixedUpdateHandles = updateHandleData.FixedUpdateHandles;
             isDestructionScheduled = false;
             updateManager.OnDestroyComponentQueue += OnDestroyComponentQueue;
+        }
+
+        private void CreateCharacter()
+        {
+            if (defaultCharacter == null)
+                return;
+
+            Character createCharacter = GameObject.Instantiate<Character>(defaultCharacter);
+            controller.SetControlPawn(createCharacter);
         }
 
         private void OnDestroyComponentQueue()
@@ -82,9 +94,6 @@ namespace CoreSystem.Scenes
                     destroyHandle.OnDestroy();
 
                 pureComponent.customMonoBehaviour.pureComponentData.RemovePureComponent(pureComponent);
-
-                if (pureComponent is System.IDisposable disposable)
-                    disposable.Dispose();
 
                 pureComponent = pureComponentManager.DequeueDestroyComponent();
             }

@@ -1,9 +1,9 @@
-﻿using CoreSystem.PureComponents.Interfaces;
+using CoreSystem.PureComponents.Interfaces;
 using UnityEngine;
 
 namespace CoreSystem.PureComponents
 {
-    public abstract class PureComponent 
+    public abstract class PureComponent
     {
         protected bool isValid = true;
         private bool enabled = true;

@@ -7,14 +7,11 @@ namespace CoreSystem
 
     public class Pawn : CustomMonoBehaviour
     {
-        public Pawn()
-        {
-            
-        }
+        private BaseController baseController;
 
-        public void SetController(BaseController controller)
+        internal void RemoveController()
         {
-            controller.controlPawn = this;
+            baseController = null;
         }
     }
 

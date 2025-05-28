@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace CoreSystem.PureComponents.Interfaces
 {
@@ -20,6 +20,11 @@ namespace CoreSystem.PureComponents.Interfaces
     public interface IDestroyHandle
     {
         public void OnDestroy();
+    }
+
+    public interface IAwakeHandle
+    {
+        public void Awake();
     }
 
     public interface IEnableHandle

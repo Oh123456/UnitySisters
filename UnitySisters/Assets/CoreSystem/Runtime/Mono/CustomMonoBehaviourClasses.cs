@@ -1,4 +1,4 @@
-﻿using CoreSystem.PureComponents.Interfaces;
+using CoreSystem.PureComponents.Interfaces;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -30,6 +30,9 @@ namespace CoreSystem.PureComponents
 
                 pureComponents.Add(typeof(T), TComponent);
 
+                if (TComponent is IAwakeHandle awakeHandle)
+                    awakeHandle.Awake();
+
                 if (TComponent is IEnableHandle enableHandle)
                     enableHandle.OnEnable();
 
@@ -52,7 +55,7 @@ namespace CoreSystem.PureComponents
             /// <summary>
             /// 업데이트 해지
             /// </summary>
-            private void Unregister(PureComponent component)
+            private void UnregisterUpdate(PureComponent component)
             {
                 PureComponentManager updateManager = PureComponentManager.Instance;
                 UpdateHandleData updateHandleData = updateManager.UpdateHandleData;
@@ -72,7 +75,10 @@ namespace CoreSystem.PureComponents
                 if (!pureComponents.Remove(type))
                     return;
 
-                Unregister(pureComponent);
+                if (pureComponent is System.IDisposable disposable)
+                    disposable.Dispose();
+
+                UnregisterUpdate(pureComponent);
                 return;
             }
 
@@ -82,7 +88,12 @@ namespace CoreSystem.PureComponents
 
                 while (enumerator.MoveNext())
                 {
-                    Unregister(enumerator.Current.Value);
+                    PureComponent pureComponent = enumerator.Current.Value;
+
+                    UnregisterUpdate(pureComponent);
+
+                    if (pureComponent is System.IDisposable disposable)
+                        disposable.Dispose();
                 }
 
                 pureComponents.Clear();

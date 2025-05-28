@@ -1,4 +1,4 @@
-﻿
+
 using System.Collections;
 using System.Collections.Generic;
 
@@ -47,7 +47,7 @@ public static class LogUtility
     }
 
     [System.Diagnostics.Conditional("UNITY_EDITOR"), System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
-    public static void Log<T>(IEnumerable<T> enumerable)
+    public static void LogEnumerable<T>(IEnumerable<T> enumerable)
     {
         var enumerator = enumerable.GetEnumerator();
 
@@ -58,7 +58,7 @@ public static class LogUtility
     }
 
     [System.Diagnostics.Conditional("UNITY_EDITOR"), System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
-    public static void Log<T>(IEnumerable<T> enumerable, EnumeratorLogAction<T> logFun)
+    public static void LogEnumerable<T>(IEnumerable<T> enumerable, EnumeratorLogAction<T> logFun)
     {
         var enumerator = enumerable.GetEnumerator();
 

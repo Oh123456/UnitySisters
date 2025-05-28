@@ -6,7 +6,7 @@ namespace CoreSystem.Controllers
 {
     public abstract class BaseController: System.IDisposable
     {
-        internal Pawn controlPawn;
+        private Pawn controlPawn;
         public Pawn ControlPawn => controlPawn;
 
         public BaseController()
@@ -14,9 +14,22 @@ namespace CoreSystem.Controllers
             SetInputAction(InputManager.Instance.ActionCollection);
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
+            if (controlPawn != null)
+                controlPawn.RemoveController();
+
             ClearInputAction(InputManager.Instance.ActionCollection);
+        }
+
+        public virtual void SetControlPawn(Pawn pawn)
+        {
+            //이전에 컨트롤 중이면 컨트롤러 제거
+            if (controlPawn != null)                
+                controlPawn.RemoveController();
+            
+
+            controlPawn = pawn;
         }
 
         protected abstract void SetInputAction(IInputActionCollection2 inputActions);
