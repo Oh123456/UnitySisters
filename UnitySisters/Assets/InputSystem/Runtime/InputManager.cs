@@ -4,14 +4,27 @@ using UnityFramework.Singleton;
 
 namespace CoreSystem.Input
 {
+
+    [System.Serializable]
+    public struct InputDefaultData
+    {
+        public string move;
+        public string lockAt;
+    }
+
     public class InputManager : LazySingleton<InputManager>
     {
+        private InputDefaultData inputDefaultData;
+        public InputDefaultData InputDefaultData => inputDefaultData;   
+
         private IInputActionCollection2 actionCollection;
         public IInputActionCollection2 ActionCollection => actionCollection;
         public T GetActionCollection<T>() where T : IInputActionCollection2 => (T)actionCollection;
 
-        public void LoadInputSystem(InputActionAsset inputAsset)
+        public void LoadInputSystem(InputActionAsset inputAsset, in InputDefaultData inputDefaultData)
         {
+            this.inputDefaultData = inputDefaultData;
+
             string className = $"{inputAsset.name}";
 
             System.Type type = System.Type.GetType(className);

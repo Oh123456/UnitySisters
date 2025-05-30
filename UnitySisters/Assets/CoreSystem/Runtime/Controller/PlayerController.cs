@@ -1,4 +1,5 @@
 using CoreSystem.Components;
+using CoreSystem.Input;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using static UnityEngine.InputSystem.InputAction;
@@ -32,7 +33,9 @@ namespace CoreSystem.Controllers
 
         protected override void SetInputAction(IInputActionCollection2 inputActions)
         {
-            InputAction move = inputActions.FindAction("Move");
+            InputDefaultData inputDefaultData = InputManager.Instance.InputDefaultData;
+            InputAction move = inputActions.FindAction(inputDefaultData.move);
+
             if (move != null)
             {
                 move.performed += MoveCharacter;
@@ -42,8 +45,9 @@ namespace CoreSystem.Controllers
 
         protected override void ClearInputAction(IInputActionCollection2 inputActions)
         {
-            // TODO:: 이름은 추후에 옵션을 뺴둘것
-            InputAction move = inputActions.FindAction("Move");
+            InputDefaultData inputDefaultData = InputManager.Instance.InputDefaultData;
+            InputAction move = inputActions.FindAction(inputDefaultData.move);
+
             if (move != null)
             {
                 move.performed -= MoveCharacter;
