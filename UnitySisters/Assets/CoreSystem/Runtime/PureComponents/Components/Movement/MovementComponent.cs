@@ -11,6 +11,7 @@ namespace CoreSystem.Components
 
         private Rigidbody rigidbody;
         private Transform contorlGameObject;
+        private bool ignoreTimeScale;
 
         public MovementData MovementData => movementData;
 
@@ -19,6 +20,7 @@ namespace CoreSystem.Components
         public MovementComponent()
         {
             movementData.OnChangeMoveLockDirection += OnChangeMoveLockDirection;
+            movementData.OnChangeIgnoreTimeScale += OnChangeMoveLockDirection;
             OnChangeMoveLockDirection(movementData.IsMoveLockDirection);
         }
 
@@ -42,8 +44,8 @@ namespace CoreSystem.Components
 
             float speed = movementData.Speed;
 
-            Vector3 direction = contorlGameObject.forward * movementInputValue.y + contorlGameObject.right * movementInputValue.x;
-            direction *= speed * Time.fixedDeltaTime;
+            Vector3 direction = GetForward() * movementInputValue.y + contorlGameObject.right * movementInputValue.x;
+            direction *= speed * GetDeltaTime();
 
             rigidbody.MovePosition(contorlGameObject.position + direction);
         }
@@ -58,8 +60,8 @@ namespace CoreSystem.Components
 
             Vector3 direction = new Vector3(movementInputValue.x, 0.0f, movementInputValue.y).normalized;
 
-            Vector3 moveDirection = contorlGameObject.forward * direction.magnitude;
-            moveDirection *= speed * Time.fixedDeltaTime;
+            Vector3 moveDirection = GetForward() * direction.magnitude;
+            moveDirection *= speed * GetDeltaTime();
 
             rigidbody.MoveRotation(Quaternion.LookRotation(direction));
 
@@ -75,11 +77,29 @@ namespace CoreSystem.Components
                 moveAction = MoveLockDirection;
         }
 
+        private float GetDeltaTime()
+        {
+            if (movementData.IgnoreTimeScale)
+                return Time.fixedUnscaledDeltaTime;
+            else
+                return Time.fixedDeltaTime;
+        }
+
+        private Vector3 GetForward()
+        {
+            Transform controlCamera = movementData.ControlCamera;
+            if (controlCamera == null)
+                return contorlGameObject.forward;
+            else 
+                return controlCamera.forward;
+        }
+
         public void Dispose()
         {
             contorlGameObject = null;
             rigidbody = null;
             movementData.OnChangeMoveLockDirection -= OnChangeMoveLockDirection;
+            movementData = null;
         }
 
 

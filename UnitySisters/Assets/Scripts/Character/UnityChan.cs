@@ -1,7 +1,7 @@
 using CoreSystem;
 using UnityEngine;
 
-public class UnityChan : Character
+public class UnityChan : PlayerCharacter
 {
     
 }

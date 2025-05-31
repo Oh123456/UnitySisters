@@ -2,6 +2,7 @@ using CoreSystem.Controllers;
 using CoreSystem.PureComponents;
 using CoreSystem.PureComponents.Interfaces;
 using System.Collections.Generic;
+using Unity.Cinemachine;
 using UnityEngine;
 
 namespace CoreSystem.Scenes
@@ -14,6 +15,7 @@ namespace CoreSystem.Scenes
         private bool isDestructionScheduled;
 
         [SerializeField] private Character defaultCharacter;
+        [SerializeField] private CinemachineCamera defaultCamera;
 
         protected BaseController controller;
 
@@ -76,6 +78,7 @@ namespace CoreSystem.Scenes
 
             Character createCharacter = GameObject.Instantiate<Character>(defaultCharacter);
             controller.SetControlPawn(createCharacter);
+            createCharacter.SetCamera(defaultCamera);
         }
 
         private void OnDestroyComponentQueue()

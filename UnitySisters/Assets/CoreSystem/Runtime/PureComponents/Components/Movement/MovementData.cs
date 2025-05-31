@@ -2,6 +2,7 @@ using UnityEngine;
 
 namespace CoreSystem.Components
 {
+
     public class MovementData
     {
         // 스피드
@@ -33,9 +34,29 @@ namespace CoreSystem.Components
         }
 
 
+        private bool ignoreTimeScale = false;
+
+        public bool IgnoreTimeScale => ignoreTimeScale;
+        public void SetIgnoreTimeScale(bool ignoreTimeScale)
+        {
+            if (this.ignoreTimeScale == ignoreTimeScale)
+                return;
+            this.ignoreTimeScale = ignoreTimeScale;
+            OnChangeIgnoreTimeScale?.Invoke(ignoreTimeScale);
+        }
+
+        private Transform controlCamera;
+        
+        public Transform ControlCamera => controlCamera;
+        public void SetControlCamera(Camera camera)
+        {
+            this.controlCamera = camera.transform;
+        }
+
         // event
 
         public event System.Action<bool> OnChangeMoveLockDirection;
+        public event System.Action<bool> OnChangeIgnoreTimeScale;
 
     }
 }

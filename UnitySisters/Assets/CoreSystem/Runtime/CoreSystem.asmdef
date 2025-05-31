@@ -5,7 +5,8 @@
         "UnityEngine",
         "Framework",
         "Unity.InputSystem",
-        "CoreSystem.Input"
+        "CoreSystem.Input",
+        "Unity.Cinemachine"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
