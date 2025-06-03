@@ -12,7 +12,7 @@ namespace CoreSystem
         [SerializeField] InputDefaultData inputDefaultData = new InputDefaultData()
         {
             move = "Move",
-            lockAt = "LockAt",
+            lookAt = "LookAt",
         };
 
 

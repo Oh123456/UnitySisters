@@ -9,7 +9,7 @@ namespace CoreSystem.Input
     public struct InputDefaultData
     {
         public string move;
-        public string lockAt;
+        public string lookAt;
     }
 
     public class InputManager : LazySingleton<InputManager>

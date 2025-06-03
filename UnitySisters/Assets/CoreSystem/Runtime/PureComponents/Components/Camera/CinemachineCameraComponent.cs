@@ -5,10 +5,16 @@ using UnityEngine;
 
 namespace CoreSystem.Components
 {
-    public class CinemachineCameraComponent : PureComponent, IAwakeHandle , System.IDisposable
+    public class CinemachineCameraComponent : PureComponent, IAwakeHandle, ILateUpdateHandle, System.IDisposable
     {
-        private CinemachineCamera carmeraObject;
+        private CinemachineCamera cameraObject;
         private Transform targetObject;
+        private CinemachineFollow cinemachineFollow;
+        private CinemachineCameraData cinemachineCameraData = new CinemachineCameraData();
+
+        private Vector2 currentRotation;
+
+        public CinemachineCameraData CinemachineCameraData => cinemachineCameraData;
 
         public void Awake()
         {
@@ -17,7 +23,19 @@ namespace CoreSystem.Components
 
         public void SetCaermea(CinemachineCamera camera)
         {
-            carmeraObject = camera;
+            cameraObject = camera;
+            cameraObject.TryGetComponent<CinemachineFollow>(out cinemachineFollow);
+
+            var offset = cinemachineFollow.FollowOffset;
+
+            cinemachineCameraData.SetDistance(offset.z);
+
+            float distance = cinemachineCameraData.Distance;
+
+            float inv_Distance = 1 / distance;
+
+            currentRotation.x = (Mathf.Atan2(offset.z, offset.x)) * Mathf.Rad2Deg;
+            currentRotation.y = ((offset.y * inv_Distance) * CinemachineCameraData.MAX_PITCH);
 
             SetTarget(targetObject);
         }
@@ -25,18 +43,58 @@ namespace CoreSystem.Components
         public void SetTarget(Transform target)
         {
             targetObject = target;
-            CameraTarget cameraTarget = carmeraObject.Target;
+            CameraTarget cameraTarget = cameraObject.Target;
             cameraTarget.TrackingTarget = targetObject;
-            carmeraObject.Target = cameraTarget;
+            cameraObject.Target = cameraTarget;
+        }
+        public void LateUpdate()
+        {
+            if (cinemachineFollow == null)
+                return;
+
+
+            Vector2 inputValue = cinemachineCameraData.RotationValue;
+            if (inputValue.Equals(Vector2.zero))
+                return;
+
+            CinemachineCameraLookData cinemachineCameraLookData = cinemachineCameraData.CinemachineCameraLookData;
+
+            float speed = cinemachineCameraData.Speed;
+
+            Vector3 followOffset = cinemachineFollow.FollowOffset;
+
+            float maxYaw = cinemachineCameraLookData.maxYaw;
+            float minYaw = cinemachineCameraLookData.minYaw;
+            float maxPitch = cinemachineCameraLookData.maxPitch;
+            float minPitch = cinemachineCameraLookData.minPitch;
+
+            currentRotation.x += speed * inputValue.x * Time.deltaTime;
+            if (!maxYaw.Equals(minYaw))
+                currentRotation.x = Mathf.Clamp(currentRotation.x, minYaw, maxYaw);
+
+            currentRotation.y += speed * inputValue.y * Time.deltaTime;
+            if (!maxPitch.Equals(minPitch))
+                currentRotation.y = Mathf.Clamp(currentRotation.y, minPitch, maxPitch);
+
+
+            float distance = cinemachineCameraData.Distance;
+
+            followOffset.x = Mathf.Cos(currentRotation.x * Mathf.Deg2Rad) * distance;
+            followOffset.z = Mathf.Sin(currentRotation.x * Mathf.Deg2Rad) * distance;
+
+            followOffset.y = (currentRotation.y * CinemachineCameraData.INVERSE_MAX_PITCH) * distance;
+
+            cinemachineFollow.FollowOffset = followOffset;
         }
 
         public void Dispose()
         {
-            carmeraObject = null;
+            cameraObject = null;
             targetObject = null;
+            cinemachineFollow = null;
         }
 
-      
+
     }
 
 }
