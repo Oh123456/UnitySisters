@@ -48,7 +48,7 @@ namespace CoreSystem.Components
         private Transform controlCamera;
         
         public Transform ControlCamera => controlCamera;
-        public void SetControlCamera(Camera camera)
+        public void SetControlCamera(GameObject camera)
         {
             this.controlCamera = camera.transform;
         }

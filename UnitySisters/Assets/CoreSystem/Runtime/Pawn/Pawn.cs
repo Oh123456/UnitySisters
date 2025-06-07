@@ -16,7 +16,7 @@ namespace CoreSystem
             baseController = null;
         }
 
-        public void SetCamera(CinemachineCamera camera)
+        public virtual void SetCamera(CinemachineCamera camera)
         {
             if (!GetPureComponent<CinemachineCameraComponent>(out var component))
                 return;

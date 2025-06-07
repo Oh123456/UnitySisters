@@ -12,6 +12,7 @@ namespace CoreSystem.Components
         private CinemachineFollow cinemachineFollow;
         private CinemachineCameraData cinemachineCameraData = new CinemachineCameraData();
 
+        [PureComponentField]
         private Vector2 currentRotation;
 
         public CinemachineCameraData CinemachineCameraData => cinemachineCameraData;
@@ -35,7 +36,9 @@ namespace CoreSystem.Components
             float inv_Distance = 1 / distance;
 
             currentRotation.x = (Mathf.Atan2(offset.z, offset.x)) * Mathf.Rad2Deg;
-            currentRotation.y = ((offset.y * inv_Distance) * CinemachineCameraData.MAX_PITCH);
+            currentRotation.y = (Mathf.Asin(offset.y * inv_Distance) * Mathf.Rad2Deg);
+
+            currentRotation = ClampAngle(currentRotation);
 
             SetTarget(targetObject);
         }
@@ -53,28 +56,19 @@ namespace CoreSystem.Components
                 return;
 
 
-            Vector2 inputValue = cinemachineCameraData.RotationValue;
-            if (inputValue.Equals(Vector2.zero))
+            Vector2 rotationValue = cinemachineCameraData.RotationValue;
+            if (rotationValue.Equals(Vector2.zero))
                 return;
 
-            CinemachineCameraLookData cinemachineCameraLookData = cinemachineCameraData.CinemachineCameraLookData;
 
             float speed = cinemachineCameraData.Speed;
 
             Vector3 followOffset = cinemachineFollow.FollowOffset;
 
-            float maxYaw = cinemachineCameraLookData.maxYaw;
-            float minYaw = cinemachineCameraLookData.minYaw;
-            float maxPitch = cinemachineCameraLookData.maxPitch;
-            float minPitch = cinemachineCameraLookData.minPitch;
+            currentRotation.x += speed * rotationValue.x * Time.deltaTime;                
+            currentRotation.y += speed * rotationValue.y * Time.deltaTime;
 
-            currentRotation.x += speed * inputValue.x * Time.deltaTime;
-            if (!maxYaw.Equals(minYaw))
-                currentRotation.x = Mathf.Clamp(currentRotation.x, minYaw, maxYaw);
-
-            currentRotation.y += speed * inputValue.y * Time.deltaTime;
-            if (!maxPitch.Equals(minPitch))
-                currentRotation.y = Mathf.Clamp(currentRotation.y, minPitch, maxPitch);
+            currentRotation = ClampAngle(currentRotation);
 
 
             float distance = cinemachineCameraData.Distance;
@@ -82,9 +76,28 @@ namespace CoreSystem.Components
             followOffset.x = Mathf.Cos(currentRotation.x * Mathf.Deg2Rad) * distance;
             followOffset.z = Mathf.Sin(currentRotation.x * Mathf.Deg2Rad) * distance;
 
-            followOffset.y = (currentRotation.y * CinemachineCameraData.INVERSE_MAX_PITCH) * distance;
+            followOffset.y = Mathf.Sin(currentRotation.y * Mathf.Deg2Rad) * distance;
 
             cinemachineFollow.FollowOffset = followOffset;
+        }
+
+        private Vector2 ClampAngle(Vector2 angle)
+        {
+            CinemachineCameraLookData cinemachineCameraLookData = cinemachineCameraData.CinemachineCameraLookData;
+
+
+            float maxYaw = cinemachineCameraLookData.maxYaw;
+            float minYaw = cinemachineCameraLookData.minYaw;
+            float maxPitch = cinemachineCameraLookData.maxPitch;
+            float minPitch = cinemachineCameraLookData.minPitch;
+
+            if (!maxYaw.Equals(minYaw))
+                angle.x = Mathf.Clamp(currentRotation.x, minYaw, maxYaw);
+
+            if (!maxPitch.Equals(minPitch))
+                angle.y = Mathf.Clamp(currentRotation.y, minPitch, maxPitch);
+
+            return angle;
         }
 
         public void Dispose()

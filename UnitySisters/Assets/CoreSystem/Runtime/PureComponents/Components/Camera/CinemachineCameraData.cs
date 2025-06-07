@@ -17,6 +17,9 @@ namespace CoreSystem.Components
         public const float INVERSE_MAX_PITCH = 1.0f / MAX_PITCH;
         public const float MAX_YAW = 180.0f;
 
+        /// <summary>
+        /// 카메라 각도 최대최소값
+        /// </summary>
         private CinemachineCameraLookData cinemachineCameraLookData = new CinemachineCameraLookData()
         {
             minPitch = -30.0f,
@@ -34,10 +37,15 @@ namespace CoreSystem.Components
             rotationValue = vector2;    
         }
 
-        private float speed = 2.0f;
+        /// <summary>
+        /// 카메라 회전 속도
+        /// </summary>
+        private float speed = 5.0f;
         public float Speed => speed;
 
-
+        /// <summary>
+        /// 카메라와 타겟의 거리
+        /// </summary
         private float distance = 2.0f;
         public void SetDistance(float distance)
         {

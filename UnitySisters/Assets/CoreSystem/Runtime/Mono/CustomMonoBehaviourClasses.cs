@@ -6,14 +6,27 @@ namespace CoreSystem.PureComponents
 {
     public partial class CustomMonoBehaviour
     {
+        [System.Serializable]
         public class PureComponentData
         {
             private Dictionary<System.Type, PureComponent> pureComponents = new Dictionary<System.Type, PureComponent>();
+
+            public int Count => pureComponents.Count;
+
+            internal Dictionary<System.Type, PureComponent>.Enumerator Enumerator => pureComponents.GetEnumerator();
+
+            [System.Diagnostics.Conditional("UNITY_EDITOR")]
+            internal void ClearPureComponent()
+            {
+                pureComponents.Clear();
+            }
+
             /// <summary>
             /// 컴포넌트 추가
             /// </summary>
             public T AddPureComponent<T>(CustomMonoBehaviour customMonoBehaviour) where T : PureComponent, new()
             {
+                
                 System.Type type = typeof(T);
                 if (pureComponents.TryGetValue(type, out PureComponent component))
                 {

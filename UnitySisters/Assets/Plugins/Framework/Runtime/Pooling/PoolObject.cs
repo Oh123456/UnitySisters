@@ -58,7 +58,8 @@ namespace UnityFramework.PoolObject
 
     public struct ArrayPoolObject<T> : System.IDisposable
     {
-        T[] array;
+        private T[] array;
+        private int size;
 
         public T this[int index]
         {
@@ -70,8 +71,11 @@ namespace UnityFramework.PoolObject
 
         public int MaxLength => array.Length;
 
+        public int Length => size;
+
         public ArrayPoolObject(int size)
         {
+            this.size = size;
             array = ArrayPool<T>.Shared.Rent(size);
         }
 

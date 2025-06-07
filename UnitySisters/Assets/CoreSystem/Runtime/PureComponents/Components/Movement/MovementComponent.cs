@@ -44,8 +44,12 @@ namespace CoreSystem.Components
 
             float speed = movementData.Speed;
 
-            Vector3 direction = GetForward() * movementInputValue.y + contorlGameObject.right * movementInputValue.x;
+            Vector3 forward = GetForward();
+
+            Vector3 direction = forward * movementInputValue.y + contorlGameObject.right * movementInputValue.x;
             direction *= speed * GetDeltaTime();
+
+            rigidbody.MoveRotation(Quaternion.LookRotation(forward));
 
             rigidbody.MovePosition(contorlGameObject.position + direction);
         }
@@ -88,10 +92,14 @@ namespace CoreSystem.Components
         private Vector3 GetForward()
         {
             Transform controlCamera = movementData.ControlCamera;
+            Vector3 forward = Vector3.zero;
             if (controlCamera == null)
-                return contorlGameObject.forward;
-            else 
-                return controlCamera.forward;
+                forward = contorlGameObject.forward;
+            else
+                forward = controlCamera.forward;
+
+            forward.y = 0.0f;
+            return forward;
         }
 
         public void Dispose()

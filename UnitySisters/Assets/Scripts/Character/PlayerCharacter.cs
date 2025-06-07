@@ -4,10 +4,10 @@ using UnityEngine;
 
 public class PlayerCharacter : Character
 {
-    protected override void Awake()
+    protected override void InitializePureComponent()
     {
-        base.Awake();
+        base.InitializePureComponent();
         AddPureComponent<CinemachineCameraComponent>();
-    } 
+    }
  
 }
