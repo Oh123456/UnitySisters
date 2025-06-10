@@ -10,7 +10,7 @@ namespace CoreSystem.Components
         public float maxYaw;
     }
 
-
+    [PureComponentData]
     public class CinemachineCameraData 
     {
         public const float MAX_PITCH = 90.0f;
@@ -29,7 +29,7 @@ namespace CoreSystem.Components
         };
 
         public CinemachineCameraLookData CinemachineCameraLookData => cinemachineCameraLookData;
-
+        [PureComponentField]
         private Vector2 rotationValue = Vector2.zero;
         public Vector2 RotationValue => rotationValue;
         public void SetRotationValue(Vector2 vector2)

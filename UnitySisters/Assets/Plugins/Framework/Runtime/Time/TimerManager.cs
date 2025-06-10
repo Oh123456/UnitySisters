@@ -78,7 +78,7 @@ namespace UnityFramework.Timer
         {
             UniTask uniTask = UniTask.Delay((int)(time * 1000.0f), ignoreTimeScale, delayTiming);
             // 비동기 타이머 작동
-            uniTask.ContinueWith(callback);
+            _= uniTask.ContinueWith(callback);
         }
 
         /// <summary>

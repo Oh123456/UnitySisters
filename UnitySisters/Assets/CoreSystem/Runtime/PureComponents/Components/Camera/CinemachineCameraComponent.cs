@@ -7,9 +7,11 @@ namespace CoreSystem.Components
 {
     public class CinemachineCameraComponent : PureComponent, IAwakeHandle, ILateUpdateHandle, System.IDisposable
     {
+        [PureComponentField]
         private CinemachineCamera cameraObject;
         private Transform targetObject;
         private CinemachineFollow cinemachineFollow;
+        [PureComponentField]
         private CinemachineCameraData cinemachineCameraData = new CinemachineCameraData();
 
         [PureComponentField]
