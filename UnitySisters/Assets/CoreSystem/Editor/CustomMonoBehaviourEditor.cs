@@ -1,6 +1,8 @@
 namespace CoreSystem.Editor
 {
     using CoreSystem.PureComponents;
+    using System.Collections.Generic;
+    using System.IO;
     using System.Reflection;
     using UnityEditor;
     using UnityEditor.SceneManagement;
@@ -16,6 +18,7 @@ namespace CoreSystem.Editor
             Return,
             Success
         }
+
 
         private CustomMonoBehaviour customMonoBehaviour;
         private bool currentTargetisVaildScene = false;
@@ -34,23 +37,37 @@ namespace CoreSystem.Editor
 
                 guid = AssetDatabase.AssetPathToGUID(prefabStage.assetPath);
             }
+            else if (IsPlayMode())
+            {
+                customMonoBehaviour = target as CustomMonoBehaviour;
+            }
 
+        }
+
+        private bool IsPlayMode()
+        {
+            return EditorApplication.isPlaying || EditorApplication.isPaused;
         }
 
         public override void OnInspectorGUI()
         {
-            base.OnInspectorGUI();
+            base.OnInspectorGUI();            
             activeGameObject = Selection.activeGameObject;
             if (activeGameObject == null)
                 return;
             currentTargetisVaildScene = activeGameObject.scene.IsValid();
             GUILayout.Space(10.0f);
-            PrefabStage prefabStage = PrefabStageUtility.GetCurrentPrefabStage();
-            if (prefabStage == null)
+
+            if (!IsPlayMode())
             {
-                OpenPrefab();
-                return;
+                PrefabStage prefabStage = PrefabStageUtility.GetCurrentPrefabStage();
+                if (prefabStage == null)
+                {
+                    OpenPrefab();
+                    return;
+                }
             }
+
 
             if (!currentTargetisVaildScene)
             {
@@ -58,42 +75,36 @@ namespace CoreSystem.Editor
                 return;
             }
 
+            Show();
+
+            GUILayout.Space(10.0f);
+   
+        }
+
+        private void Show()
+        {
             if (customMonoBehaviour == null)
                 return;
-           
+
             if (customMonoBehaviour.GetAllPureComponent(out ArrayPoolObject<PureComponent> array))
             {
                 using (array)
                 {
-
-
                     int length = array.Length;
                     for (int i = 0; i < length; i++)
                     {
                         EditorGUILayout.Space(10.0f);
+
                         DrawInspector(array[i], true);
                     }
                 }
             }
-
-            GUILayout.Space(10.0f);
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Save PureComponent"))
-            {
-                SaveData();
-            }
-
-            if (GUILayout.Button("Refresh PureComponent"))
-            {
-                SaveData();
-                customMonoBehaviour.InitializeEditorPureComponent(true);
-            }
-            EditorGUILayout.EndHorizontal();
         }
 
-        private void DrawInspector(object component, bool isHeader)
+        private void DrawInspector(object component, bool isHeader )
         {
             System.Type type = component.GetType();
+
             string typeName = type.Name;
 
             string foldoutKey = $"{guid}_{typeName}";
@@ -106,32 +117,25 @@ namespace CoreSystem.Editor
             if (current != foldout)
                 SessionState.SetBool(foldoutKey, foldout);
 
-            // 폴딩이 닫히면 랜더 X 
-            if (current)
+            FieldInfo[] fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+            if (fields == null)
+                return;
+            int length = fields.Length;
+            if (length == 0)
+                return;
+
+            for (int i = 0; i < length; i++)
             {
-
-                FieldInfo[] fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
-                if (fields == null)
+                FieldInfo field = fields[i];
+                if (DrawField(field, component, current) == Result.Return)
                     return;
-                int length = fields.Length;
-                if (length == 0)
-                    return;
-
-                for (int i = 0; i < length; i++)
-                {
-                    FieldInfo field = fields[i];
-                    if (DrawField(field, component) == Result.Return)
-                        return;
-
-
-                }
-
             }
+
             EndFoldoutGroup(isHeader);
         }
 
-        private bool BeginFoldoutGroup(bool isHeader ,bool foldout, string name)
+        private bool BeginFoldoutGroup(bool isHeader, bool foldout, string name)
         {
             bool returnValue = false;
             if (isHeader)
@@ -154,7 +158,7 @@ namespace CoreSystem.Editor
                 EditorGUI.indentLevel--;
         }
 
-        private Result DrawField(FieldInfo field , object component)
+        private Result DrawField(FieldInfo field, object component, bool isShow)
         {
             System.Attribute attr = field.GetCustomAttribute<PureComponentFieldAttribute>();
             if (attr == null)
@@ -178,13 +182,16 @@ namespace CoreSystem.Editor
 
             System.Type valueType = value.GetType();
 
-            if (darwFields.TryGetValue(valueType, out var action))
+            if (isShow)
             {
-                action(field.Name, value);
-            }
-            else
-            {
-                EditorGUILayout.LabelField(field.Name);
+                if (darwFields.TryGetValue(valueType, out var action))
+                {
+                    action(field.Name, value);
+                }
+                else
+                {
+                    EditorGUILayout.LabelField(field.Name);
+                }
             }
 
             return Result.Success;
@@ -204,7 +211,7 @@ namespace CoreSystem.Editor
                     EditorGUILayout.LabelField("You can only edit PureComponent if it's a prefab. Please create a prefab to continue.");
 
                     EditorGUILayout.Space(5.0f);
-                    EditorGUILayout.EndVertical(); 
+                    EditorGUILayout.EndVertical();
                     return;
                 }
             }
@@ -216,7 +223,7 @@ namespace CoreSystem.Editor
                     path = AssetDatabase.GetAssetPath(prefabAsset);
                 else
                     path = AssetDatabase.GetAssetPath(target);
-                
+
 
                 PrefabAssetType prefabAssetType = PrefabUtility.GetPrefabAssetType(target);
                 if (prefabAssetType == PrefabAssetType.Regular ||
@@ -227,9 +234,6 @@ namespace CoreSystem.Editor
             }
         }
 
-        private void SaveData()
-        {
-            
-        }
-    } 
+
+    }
 }
