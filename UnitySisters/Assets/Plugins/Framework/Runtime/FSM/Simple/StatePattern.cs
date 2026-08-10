@@ -1,6 +1,4 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace UnityFramework.FSM
 {
@@ -8,16 +6,16 @@ namespace UnityFramework.FSM
     {
         private T currentState;
 
-        public T CurrentState => this.currentState;
+        public T CurrentState => currentState;
 
         /// <summary>
         /// (T,T) == (이전,바뀐것)
         /// </summary>
         public event System.Action<T, T> OnStateChanged;
 
-        public StatePattern(T defulat)
+        public StatePattern(T defaultState)
         {
-            currentState = defulat;
+            currentState = defaultState;
         }
 
         /// <summary>
@@ -26,6 +24,9 @@ namespace UnityFramework.FSM
         /// <param name="state"></param>
         public void ChangeState(T state)
         {
+            if (EqualityComparer<T>.Default.Equals(currentState, state))
+                return;
+
             T old = currentState;
             currentState = state;
             OnStateChanged?.Invoke(old, currentState);

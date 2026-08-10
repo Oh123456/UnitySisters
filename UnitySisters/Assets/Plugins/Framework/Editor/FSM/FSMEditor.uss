@@ -1,0 +1,113 @@
+.fsm-toolbar {
+    min-height: 24px;
+    padding-left: 4px;
+    padding-right: 6px;
+}
+
+.fsm-machine-dropdown {
+    min-width: 260px;
+    flex-grow: 1;
+    max-width: 520px;
+}
+
+.fsm-data-field {
+    min-width: 220px;
+    flex-grow: 1;
+    max-width: 420px;
+}
+
+.fsm-play-status {
+    margin-left: auto;
+    -unity-font-style: bold;
+    color: rgb(120, 190, 145);
+}
+
+.fsm-detail-panel {
+    min-width: 250px;
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 8px;
+    background-color: rgb(43, 43, 43);
+}
+
+.fsm-section-title {
+    height: 25px;
+    margin-top: 7px;
+    margin-bottom: 5px;
+    padding-bottom: 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(75, 75, 75);
+    -unity-font-style: bold;
+    font-size: 13px;
+}
+
+.fsm-detail-row {
+    min-height: 24px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.fsm-detail-name {
+    width: 92px;
+    color: rgb(170, 170, 170);
+}
+
+.fsm-detail-value {
+    flex-grow: 1;
+    white-space: normal;
+}
+
+.fsm-history-list {
+    flex-grow: 1;
+    margin-top: 3px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-color: rgb(65, 65, 65);
+    border-bottom-color: rgb(65, 65, 65);
+    border-left-color: rgb(65, 65, 65);
+    border-right-color: rgb(65, 65, 65);
+}
+
+.fsm-edit-panel {
+    margin-top: 8px;
+    padding-bottom: 6px;
+}
+
+.fsm-edit-panel > .unity-base-field {
+    margin-top: 3px;
+    margin-bottom: 3px;
+}
+
+.fsm-history-item {
+    padding-left: 6px;
+    padding-right: 4px;
+    padding-top: 3px;
+    white-space: normal;
+    font-size: 11px;
+}
+
+.fsm-state-node {
+    min-width: 180px;
+}
+
+.fsm-state-node--active {
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-color: rgb(55, 225, 140);
+    border-bottom-color: rgb(55, 225, 140);
+    border-left-color: rgb(55, 225, 140);
+    border-right-color: rgb(55, 225, 140);
+}
+
+.fsm-state-id {
+    margin-left: 7px;
+    margin-right: 7px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    color: rgb(180, 185, 192);
+    -unity-font-style: bold;
+}

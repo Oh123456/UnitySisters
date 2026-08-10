@@ -1,6 +1,4 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+using System;
 
 namespace UnityFramework.FSM
 {
@@ -9,29 +7,55 @@ namespace UnityFramework.FSM
         protected int id;
         protected string name;
         protected IStateMachine ownerMachine;
-        protected HashSet<int> changeAble = new HashSet<int>();
 
-        public int ID => id;
+        public int ID => this.id;
+        public string Name => this.name;
+        public IStateMachine OwnerMachine => this.ownerMachine;
 
-        public State()
+        /// <summary>
+        /// 상태 ID와 표시 이름 설정
+        /// </summary>
+        /// <param name="id">상태 식별 ID</param>
+        /// <param name="name">상태 표시 이름</param>
+        protected State(int id, string name = null)
         {
-            SetID(out id);
-            SetChangeAble(changeAble);
+            this.id = id;
+            this.name = string.IsNullOrWhiteSpace(name) ? GetType().Name : name;
         }
 
-
-        public void SetOwnerMachine(IStateMachine stateMachine)
+        /// <summary>
+        /// 상태를 소유할 상태 머신 연결
+        /// </summary>
+        internal void AttachTo(IStateMachine stateMachine)
         {
-            ownerMachine = stateMachine;    
+            if (this.ownerMachine != null && !ReferenceEquals(this.ownerMachine, stateMachine))
+                throw new InvalidOperationException($"State '{this.name}' is already attached to another state machine.");
+
+            this.ownerMachine = stateMachine;
         }
 
-		protected abstract void SetChangeAble(HashSet<int> changeAble);
-        protected abstract void SetID(out int id);
-		public bool ConditionChangeID(int id) => changeAble.Contains(id);
-		
+        /// <summary>
+        /// 현재 상태 머신과의 연결 해제
+        /// </summary>
+        internal void DetachFrom(IStateMachine stateMachine)
+        {
+            if (ReferenceEquals(this.ownerMachine, stateMachine))
+                this.ownerMachine = null;
+        }
+
+        /// <summary>
+        /// 상태 진입 시 호출
+        /// </summary>
         public virtual void Enter() { }
-		public virtual void Update() { }
-		public virtual void Exit() { }
-	}
 
+        /// <summary>
+        /// 현재 상태가 활성화된 동안 호출
+        /// </summary>
+        public virtual void Update() { }
+
+        /// <summary>
+        /// 상태 종료 시 호출
+        /// </summary>
+        public virtual void Exit() { }
+    }
 }
