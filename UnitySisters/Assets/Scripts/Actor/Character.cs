@@ -18,10 +18,19 @@ public class Character : MonoBehaviour
     [SerializeField] private float groundCheckDistance = 1.0f;
     [SerializeField] private Vector3 groundCheckOffset = Vector3.zero;
 
+    [Header("Angle")]
+    [SerializeField] private float minPitch = -60.0f;
+    [SerializeField] private float maxPitch = 20.0f;
+
+    [Header("Movement")]
+    [SerializeField] private float jumpPower = 10.0f;
+
+
     protected Vector3 velocity;
     private bool isGrounded;
 
     public Transform CarmeraTarget => carmeraTarget;
+    public float JumpPower => jumpPower;
 
     private void Reset()
     {
@@ -42,14 +51,14 @@ public class Character : MonoBehaviour
 
     private void UpdateRotation(CharacterCommand command)
     {
-        Vector2 rotation = command.cameraRoatation * Time.deltaTime;
+        Vector2 rotation = command.cameraRotation * Time.deltaTime;
 
         Vector3 local = carmeraTarget.localEulerAngles;
 
         local.x += rotation.y;
         if (local.x > 180.0f)
             local.x -= 360.0f;
-        local.x = Mathf.Clamp(local.x, -60.0f, 20.0f);
+        local.x = Mathf.Clamp(local.x, minPitch, maxPitch);
         local.y += rotation.x;
 
         carmeraTarget.localEulerAngles = local;
@@ -65,7 +74,7 @@ public class Character : MonoBehaviour
         Vector3 moveVelocity = command.moveWorldDirection * moveInput.y * moveSpeed + (command.moveWorldRight * moveInput.x * moveSpeed);
 
         velocity.x = moveVelocity.x;
-        velocity.y += command.jumpValue;
+        velocity.y += command.isJumpButton ? jumpPower : 0.0f;
         velocity.z = moveVelocity.z;
 
         if (moveRotation && !moveInput.Equals(Vector2.zero))
@@ -79,16 +88,23 @@ public class Character : MonoBehaviour
     {
         if (Physics.SphereCast(transform.position + groundCheckOffset, controller.radius, Vector3.down, out RaycastHit hitInfo, groundCheckDistance, 1, QueryTriggerInteraction.Ignore))
         {
-            if (!isGrounded)
-            {
-                Physics.Raycast(transform.position + groundCheckOffset, Vector3.down, out RaycastHit groundHitInfo, groundCheckDistance, 1);
-                Vector3 hitdir = groundHitInfo.point - transform.position;
-                controller.Move(groundHitInfo.point);
-            }
-            else if (velocity.y < 0.0f)
+            #region 레거시
+            //if (!isGrounded)
+            //{
+            //    Physics.Raycast(transform.position + groundCheckOffset, Vector3.down, out RaycastHit groundHitInfo, groundCheckDistance, 1);
+            //    Vector3 hitdir = groundHitInfo.point - transform.position;
+            //    controller.Move(groundHitInfo.point);
+            //}
+            //else if (velocity.y < 0.0f)
+            //{
+            //    velocity.y = 0.0f;
+            //} 
+            #endregion
+            if (isGrounded && velocity.y < 0.0f)
             {
                 velocity.y = 0.0f;
             }
+
 
             isGrounded = true;
         }

@@ -37,38 +37,14 @@ public class PlayerController : _3DModule.Controller.BaseController<CharacterCom
 
     protected override void OnEnable()
     {
-        //playerActions.Move.Enable();
-        //playerActions.Move.performed += MovePerformed;
-        //playerActions.Move.canceled += MoveCanceled;
-
-        //playerActions.Jump.Enable();
-        //playerActions.Jump.performed += JumpPerformed;
-
-        //playerActions.ToggleMouseCursor.Enable();
-        //playerActions.ToggleMouseCursor.performed += ToggleMouseCursorPerformed;
-
-        //playerActions.Look.Enable();
-
         EnableInputSystem(playerActions.Move, MovePerformed, MoveCanceled);
         EnableInputSystem(playerActions.Jump, JumpPerformed);
         EnableInputSystem(playerActions.ToggleMouseCursor, ToggleMouseCursorPerformed);
         EnableInputSystem(playerActions.Look);
-
-
-
     }
 
     protected override void OnDisable()
     {
-        //playerActions.Move.Disable();
-        //playerActions.Move.performed -= MovePerformed;
-        //playerActions.Move.canceled -= MoveCanceled;
-
-        //playerActions.ToggleMouseCursor.Disable();
-        //playerActions.ToggleMouseCursor.performed -= ToggleMouseCursorPerformed;
-
-        //playerActions.Look.Disable();
-
         while (inputDatas.Count > 0)
         {
             DisableInputSystem(inputDatas.Dequeue());
@@ -79,17 +55,17 @@ public class PlayerController : _3DModule.Controller.BaseController<CharacterCom
     {
         if (currentControlCharacter == null)
             return;
-        Transform CameraTransform = cinemachineCamera.transform;
-        Vector3 forward = CameraTransform.forward.normalized;
+
+        Transform cameraTransform = cinemachineCamera.transform;
+        Vector3 forward = cameraTransform.forward.normalized;
         forward.y = 0.0f;
         bool isShowCursor = showMouseCursor;
         characterCommand.isCameraControlAble = !isShowCursor;
         if (!isShowCursor)
-        {
-            Debug.Log(forward);
+        {            
             characterCommand.moveWorldDirection = new Vector3(forward.x, 0.0f, forward.z);
-            characterCommand.moveWorldRight = CameraTransform.right;
-            characterCommand.cameraRoatation = playerActions.Look.ReadValue<Vector2>();
+            characterCommand.moveWorldRight = cameraTransform.right;
+            characterCommand.cameraRotation = playerActions.Look.ReadValue<Vector2>();
         }
 
         currentControlCharacter.ExecuteCommand(characterCommand);
@@ -152,7 +128,7 @@ public class PlayerController : _3DModule.Controller.BaseController<CharacterCom
     }
     private void JumpPerformed(CallbackContext callbackContext)
     {
-        characterCommand.jumpValue = 10.0f;
+        characterCommand.isJumpButton = true;
     }
 
     private void UpdateMouseCursor()
