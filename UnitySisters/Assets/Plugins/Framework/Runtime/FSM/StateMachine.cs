@@ -8,8 +8,8 @@ namespace UnityFramework.FSM
     {
         private readonly object owner;
         private readonly FSMData sourceData;
-        private readonly Dictionary<int, State> states = new Dictionary<int, State>();
-        private readonly List<StateTransition> transitions = new List<StateTransition>();
+        private readonly Dictionary<int, State> states;
+        private readonly List<StateTransition> transitions;
         private readonly ReadOnlyDictionary<int, State> readOnlyStates;
         private readonly ReadOnlyCollection<StateTransition> readOnlyTransitions;
 
@@ -17,11 +17,7 @@ namespace UnityFramework.FSM
         private int defaultStateID;
         private bool isRunning;
 
-        public bool IsRunning => this.isRunning;
-        public int? CurrentStateID => this.currentState?.ID;
         public State CurrentState => this.currentState;
-        public IReadOnlyDictionary<int, State> States => this.readOnlyStates;
-        public IReadOnlyList<StateTransition> Transitions => this.readOnlyTransitions;
 
         public event Action<StateChangedEvent> StateChanged;
         public event Action<TransitionEvaluatedEvent> TransitionEvaluated;
@@ -42,6 +38,10 @@ namespace UnityFramework.FSM
         {
             this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
             this.sourceData = sourceData;
+            int stateCapacity = sourceData?.States.Count ?? 0;
+            int transitionCapacity = sourceData?.Transitions.Count ?? 0;
+            this.states = new Dictionary<int, State>(stateCapacity);
+            this.transitions = new List<StateTransition>(transitionCapacity);
             this.readOnlyStates = new ReadOnlyDictionary<int, State>(this.states);
             this.readOnlyTransitions = this.transitions.AsReadOnly();
         }
@@ -94,7 +94,6 @@ namespace UnityFramework.FSM
             if (states.ContainsKey(state.ID))
                 throw new ArgumentException($"A state with ID {state.ID} is already registered.", nameof(state));
 
-            state.AttachTo(this);
             states.Add(state.ID, state);
         }
 
@@ -109,8 +108,13 @@ namespace UnityFramework.FSM
             if (!states.Remove(id, out State removedState))
                 return false;
 
-            removedState.DetachFrom(this);
-            transitions.RemoveAll(transition => transition.FromStateID == id || transition.ToStateID == id);
+            // 캡처 람다와 Predicate 할당 없이 연결된 전이를 역순으로 제거한다.
+            for (int i = transitions.Count - 1; i >= 0; i--)
+            {
+                StateTransition transition = transitions[i];
+                if (transition.FromStateID == id || transition.ToStateID == id)
+                    transitions.RemoveAt(i);
+            }
             return true;
         }
 
@@ -140,7 +144,7 @@ namespace UnityFramework.FSM
             defaultStateID = initialStateID;
             currentState = states[defaultStateID];
             this.isRunning = true;
-            currentState.Enter();
+            currentState.Enter(owner);
             FSMDebugRegistry.Register(this);
             StateChanged?.Invoke(new StateChangedEvent(null, currentState.ID, StateChangeReason.Start));
         }
@@ -151,7 +155,7 @@ namespace UnityFramework.FSM
         public void Update()
         {
             EnsureRunning();
-            currentState.Update();
+            currentState.Update(owner);
         }
 
         /// <summary>
@@ -228,9 +232,9 @@ namespace UnityFramework.FSM
             result = StateChangeResult.Success;
             RaiseTransitionEvaluated(id, selectedTransition, result);
 
-            currentState.Exit();
+            currentState.Exit(owner);
             currentState = states[id];
-            currentState.Enter();
+            currentState.Enter(owner);
 
             StateChanged?.Invoke(new StateChangedEvent(previousStateID, id, StateChangeReason.Transition));
             return true;
@@ -244,9 +248,9 @@ namespace UnityFramework.FSM
             EnsureRunning();
 
             int previousStateID = currentState.ID;
-            currentState.Exit();
+            currentState.Exit(owner);
             currentState = states[defaultStateID];
-            currentState.Enter();
+            currentState.Enter(owner);
             StateChanged?.Invoke(new StateChangedEvent(previousStateID, currentState.ID, StateChangeReason.Reset));
         }
 
@@ -280,7 +284,7 @@ namespace UnityFramework.FSM
             StateChangeResult result)
         {
             TransitionEvaluated?.Invoke(new TransitionEvaluatedEvent(
-                CurrentStateID,
+                GetCurrentStateID(),
                 requestedStateID,
                 transition,
                 result));

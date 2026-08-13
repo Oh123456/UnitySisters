@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace UnityFramework.FSM
 {
@@ -9,10 +10,13 @@ namespace UnityFramework.FSM
     {
         [SerializeField] private int id;
         [SerializeField] private string name;
+#if UNITY_EDITOR
         [SerializeField] private Vector2 position;
+#endif
 
         public int ID => this.id;
         public string Name => this.name;
+#if UNITY_EDITOR
         public Vector2 Position => this.position;
 
         internal FSMStateData(int id, string name, Vector2 position)
@@ -21,6 +25,7 @@ namespace UnityFramework.FSM
             this.name = name;
             this.position = position;
         }
+#endif
 
         /// <summary>
         /// 상태 이름 변경
@@ -30,6 +35,7 @@ namespace UnityFramework.FSM
             this.name = string.IsNullOrWhiteSpace(name) ? $"State {this.id}" : name.Trim();
         }
 
+#if UNITY_EDITOR
         /// <summary>
         /// 에디터 그래프에서 사용할 노드 위치 저장
         /// </summary>
@@ -37,6 +43,7 @@ namespace UnityFramework.FSM
         {
             this.position = position;
         }
+#endif
     }
 
     [Serializable]
@@ -45,21 +52,30 @@ namespace UnityFramework.FSM
         [SerializeField] private int fromStateID;
         [SerializeField] private int toStateID;
         [SerializeField] private string name;
-        [SerializeField] private string conditionKey;
+        [SerializeField] private bool hasCondition;
+        [FormerlySerializedAs("conditionValue")]
+        [SerializeField] private int conditionID;
         [SerializeField] private int priority;
+#if UNITY_EDITOR
+        [SerializeField] private List<Vector2> routePoints = new List<Vector2>();
+#endif
 
         public int FromStateID => this.fromStateID;
         public int ToStateID => this.toStateID;
         public string Name => this.name;
-        public string ConditionKey => this.conditionKey;
+        public bool HasCondition => this.hasCondition;
+        public int ConditionID => this.conditionID;
         public int Priority => this.priority;
+#if UNITY_EDITOR
+        public IReadOnlyList<Vector2> RoutePoints =>
+            this.routePoints ?? (IReadOnlyList<Vector2>)Array.Empty<Vector2>();
+#endif
 
         internal FSMTransitionData(int fromStateID, int toStateID)
         {
             this.fromStateID = fromStateID;
             this.toStateID = toStateID;
             this.name = $"{fromStateID} To {toStateID}";
-            this.conditionKey = string.Empty;
         }
 
         /// <summary>
@@ -73,11 +89,21 @@ namespace UnityFramework.FSM
         }
 
         /// <summary>
-        /// 게임 코드에서 조건 함수를 찾을 때 사용할 키 변경
+        /// 선택된 조건 enum의 숫자 값을 전이에 지정
         /// </summary>
-        public void SetConditionKey(string conditionKey)
+        public void SetCondition(int conditionID)
         {
-            this.conditionKey = conditionKey?.Trim() ?? string.Empty;
+            this.hasCondition = true;
+            this.conditionID = conditionID;
+        }
+
+        /// <summary>
+        /// 전이에 지정된 조건 제거
+        /// </summary>
+        public void ClearCondition()
+        {
+            this.hasCondition = false;
+            this.conditionID = 0;
         }
 
         /// <summary>
@@ -87,20 +113,81 @@ namespace UnityFramework.FSM
         {
             this.priority = priority;
         }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// 전이선의 지정 구간에 경로 고정 핀 추가
+        /// </summary>
+        public void AddRoutePoint(int index, Vector2 position)
+        {
+            EnsureRoutePoints();
+            if (index < 0 || index > this.routePoints.Count)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            this.routePoints.Insert(index, position);
+        }
+
+        /// <summary>
+        /// 경로 고정 핀 위치 변경
+        /// </summary>
+        public void SetRoutePoint(int index, Vector2 position)
+        {
+            EnsureRoutePoints();
+            if (index < 0 || index >= this.routePoints.Count)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            this.routePoints[index] = position;
+        }
+
+        /// <summary>
+        /// 지정한 경로 고정 핀 제거
+        /// </summary>
+        public void RemoveRoutePoint(int index)
+        {
+            EnsureRoutePoints();
+            if (index < 0 || index >= this.routePoints.Count)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            this.routePoints.RemoveAt(index);
+        }
+
+        /// <summary>
+        /// 전이선의 모든 경로 고정 핀 제거
+        /// </summary>
+        public void ClearRoutePoints()
+        {
+            this.routePoints?.Clear();
+        }
+
+        private void EnsureRoutePoints()
+        {
+            if (this.routePoints == null)
+                this.routePoints = new List<Vector2>();
+        }
+#endif
     }
 
     [CreateAssetMenu(fileName = "FSMData", menuName = "FSM/State Machine")]
     public class FSMData : ScriptableObject
     {
         [SerializeField] private int initialStateID;
+#if UNITY_EDITOR
         [SerializeField] private int nextStateID;
+        [SerializeField] private string stateIDTypeID;
+        [SerializeField] private string conditionTypeID;
+#endif
         [SerializeField] private List<FSMStateData> states = new List<FSMStateData>();
         [SerializeField] private List<FSMTransitionData> transitions = new List<FSMTransitionData>();
 
         public int InitialStateID => this.initialStateID;
+#if UNITY_EDITOR
+        public string StateIDTypeID => this.stateIDTypeID;
+        public string ConditionTypeID => this.conditionTypeID;
+#endif
         public IReadOnlyList<FSMStateData> States => this.states;
         public IReadOnlyList<FSMTransitionData> Transitions => this.transitions;
 
+#if UNITY_EDITOR
         /// <summary>
         /// 새 상태를 추가하고 에셋 내부에서 중복되지 않는 ID를 발급
         /// </summary>
@@ -116,6 +203,24 @@ namespace UnityFramework.FSM
 
             return state;
         }
+
+        /// <summary>
+        /// State ID enum에서 선택한 숫자로 새 상태 추가
+        /// </summary>
+        public FSMStateData AddState(int stateID, string name, Vector2 position)
+        {
+            if (ContainsState(stateID))
+                throw new ArgumentException($"State ID {stateID} already exists.", nameof(stateID));
+
+            var state = new FSMStateData(stateID, name, position);
+            state.SetName(name);
+            this.states.Add(state);
+
+            if (this.states.Count == 1)
+                this.initialStateID = stateID;
+            return state;
+        }
+#endif
 
         /// <summary>
         /// 상태와 해당 상태에 연결된 모든 전이 제거
@@ -178,15 +283,35 @@ namespace UnityFramework.FSM
         }
 
         /// <summary>
-        /// 저장된 구조와 게임 코드의 상태·조건 팩토리를 결합해 실행 가능한 상태 머신 생성
+        /// 조건이 없는 저장 구조와 상태 팩토리를 결합해 실행 가능한 상태 머신 생성
         /// </summary>
         /// <param name="owner">상태에서 참조할 게임 객체</param>
         /// <param name="stateFactory">상태 데이터를 실제 State 객체로 변환하는 함수</param>
-        /// <param name="conditionFactory">조건 키가 있는 전이를 실제 조건 함수로 변환하는 함수</param>
+        public StateMachine CreateStateMachine(
+            object owner,
+            Func<FSMStateData, State> stateFactory)
+        {
+            return CreateStateMachineInternal(owner, stateFactory, null);
+        }
+
+        /// <summary>
+        /// 저장된 조건 ID와 게임 코드의 조건 팩토리를 결합해 실행 가능한 상태 머신 생성
+        /// </summary>
         public StateMachine CreateStateMachine(
             object owner,
             Func<FSMStateData, State> stateFactory,
-            Func<FSMTransitionData, Func<IStateMachine, bool>> conditionFactory = null)
+            Func<int, Func<IStateMachine, bool>> conditionFactory)
+        {
+            if (conditionFactory == null)
+                throw new ArgumentNullException(nameof(conditionFactory));
+
+            return CreateStateMachineInternal(owner, stateFactory, conditionFactory);
+        }
+
+        private StateMachine CreateStateMachineInternal(
+            object owner,
+            Func<FSMStateData, State> stateFactory,
+            Func<int, Func<IStateMachine, bool>> conditionFactory)
         {
             if (stateFactory == null)
                 throw new ArgumentNullException(nameof(stateFactory));
@@ -213,17 +338,17 @@ namespace UnityFramework.FSM
                 FSMTransitionData transitionData = this.transitions[i];
                 Func<IStateMachine, bool> condition = null;
 
-                if (!string.IsNullOrWhiteSpace(transitionData.ConditionKey))
+                if (transitionData.HasCondition)
                 {
                     if (conditionFactory == null)
                         throw new InvalidOperationException(
-                            $"Transition '{transitionData.Name}' requires condition key " +
-                            $"'{transitionData.ConditionKey}', but no condition factory was provided.");
+                            $"Transition '{transitionData.Name}' requires a condition, " +
+                            "but no condition factory was provided.");
 
-                    condition = conditionFactory.Invoke(transitionData);
+                    condition = conditionFactory.Invoke(transitionData.ConditionID);
                     if (condition == null)
                         throw new InvalidOperationException(
-                            $"Condition factory could not resolve key '{transitionData.ConditionKey}'.");
+                            $"Condition factory returned null for transition '{transitionData.Name}'.");
                 }
 
                 stateMachine.AddTransition(new StateTransition(
@@ -245,17 +370,22 @@ namespace UnityFramework.FSM
             if (this.states.Count == 0)
                 throw new InvalidOperationException($"FSMData '{this.name}' has no states.");
 
-            var stateIDs = new HashSet<int>();
             for (int i = 0; i < this.states.Count; i++)
             {
                 FSMStateData state = this.states[i];
                 if (state == null)
                     throw new InvalidOperationException($"FSMData '{this.name}' contains a null state.");
-                if (!stateIDs.Add(state.ID))
-                    throw new InvalidOperationException($"FSMData '{this.name}' contains duplicate state ID {state.ID}.");
+
+                // FSM 생성마다 검증용 HashSet을 할당하지 않도록 앞선 항목만 직접 비교한다.
+                for (int duplicateIndex = 0; duplicateIndex < i; duplicateIndex++)
+                {
+                    if (this.states[duplicateIndex].ID == state.ID)
+                        throw new InvalidOperationException(
+                            $"FSMData '{this.name}' contains duplicate state ID {state.ID}.");
+                }
             }
 
-            if (!stateIDs.Contains(this.initialStateID))
+            if (!ContainsState(this.initialStateID))
                 throw new InvalidOperationException(
                     $"FSMData '{this.name}' has unknown initial state ID {this.initialStateID}.");
 
@@ -264,10 +394,56 @@ namespace UnityFramework.FSM
                 FSMTransitionData transition = this.transitions[i];
                 if (transition == null)
                     throw new InvalidOperationException($"FSMData '{this.name}' contains a null transition.");
-                if (!stateIDs.Contains(transition.FromStateID) || !stateIDs.Contains(transition.ToStateID))
+                if (!ContainsState(transition.FromStateID) || !ContainsState(transition.ToStateID))
                     throw new InvalidOperationException(
                         $"Transition '{transition.Name}' in FSMData '{this.name}' references an unknown state.");
             }
+        }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// FSMData의 조건 ID를 에디터에서 표시할 enum 타입 지정
+        /// </summary>
+        /// <remarks>
+        /// 타입이 바뀌면 같은 숫자가 다른 조건으로 해석될 수 있으므로 기존 조건 값을 모두 제거한다.
+        /// </remarks>
+        public void SetConditionType(Type conditionType)
+        {
+            if (conditionType != null && !FSMConditionType.IsValid(conditionType))
+                throw new ArgumentException(
+                    "Condition type must be a unique, non-Flags, int enum marked with FSMConditionAttribute.",
+                    nameof(conditionType));
+
+            string nextTypeID = FSMConditionType.GetID(conditionType);
+            if (this.conditionTypeID == nextTypeID)
+                return;
+
+            this.conditionTypeID = nextTypeID;
+            for (int i = 0; i < this.transitions.Count; i++)
+                this.transitions[i]?.ClearCondition();
+        }
+
+        /// <summary>
+        /// 에디터에서 상태 ID 이름으로 사용할 enum 타입 지정
+        /// </summary>
+        public void SetStateIDType(Type stateIDType)
+        {
+            if (stateIDType != null && !FSMStateIDType.IsValid(stateIDType))
+                throw new ArgumentException(
+                    "State ID type must be a unique, non-Flags, int enum marked with FSMStateIDAttribute.",
+                    nameof(stateIDType));
+
+            if (stateIDType != null)
+            {
+                for (int i = 0; i < this.states.Count; i++)
+                {
+                    if (!Enum.IsDefined(stateIDType, this.states[i].ID))
+                        throw new InvalidOperationException(
+                            $"State ID {this.states[i].ID} is not defined in {stateIDType.FullName}.");
+                }
+            }
+
+            this.stateIDTypeID = FSMStateIDType.GetID(stateIDType);
         }
 
         /// <summary>
@@ -280,10 +456,19 @@ namespace UnityFramework.FSM
 
             return this.nextStateID++;
         }
+#endif
 
         private bool ContainsState(int stateID)
         {
-            return this.states.Exists(state => state.ID == stateID);
+            for (int i = 0; i < this.states.Count; i++)
+            {
+                FSMStateData state = this.states[i];
+                if (state != null && state.ID == stateID)
+                    return true;
+            }
+
+            return false;
         }
+
     }
 }

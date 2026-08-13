@@ -8,27 +8,37 @@ namespace UnityFramework.FSM.Editor
 {
     internal class FSMGraphView : GraphView
     {
-        private static readonly Color DefaultEdgeColor = new Color(0.45f, 0.5f, 0.56f);
+        private static readonly Color DefaultEdgeColor = new Color(0.68f, 0.69f, 0.71f);
+        private static readonly Color EntryEdgeColor = new Color(0.82f, 0.52f, 0.08f);
         private static readonly Color SuccessEdgeColor = new Color(0.2f, 0.85f, 0.55f);
         private static readonly Color FailedEdgeColor = new Color(1.0f, 0.32f, 0.28f);
+        private const float ReverseTransitionOffset = 5.0f;
 
         private readonly Dictionary<int, FSMStateNode> stateNodes =
             new Dictionary<int, FSMStateNode>();
-        private readonly Dictionary<object, Edge> transitionEdges =
-            new Dictionary<object, Edge>();
+        private readonly Dictionary<object, FSMTransitionEdge> transitionEdges =
+            new Dictionary<object, FSMTransitionEdge>();
 
         private FSMData fsmData;
+        private FSMEntryNode entryNode;
+        private FSMTransitionEdge entryEdge;
+        private FSMStateNode transitionSourceNode;
         private bool isEditable;
+        private bool isDataRefreshScheduled;
+        private bool isMoveUpdateScheduled;
+        private bool isStateMoveActive;
 
-        public Func<Vector2, FSMStateData> CreateStateRequested;
+        public Action<DropdownMenu, Vector2> CreateStateMenuRequested;
+        public Action StateMoveStarted;
         public Action<FSMStateData, Vector2> StateMoved;
         public Action<FSMStateData> StateRemoved;
+        public Action<FSMStateData> InitialStateRequested;
         public Func<int, int, FSMTransitionData> TransitionCreated;
         public Action<FSMTransitionData> TransitionRemoved;
         public Action<object> ElementSelected;
 
         /// <summary>
-        /// FSM 그래프 탐색과 편집에 필요한 배경, 확대와 이동 기능 구성
+        /// Animator처럼 상태를 중심으로 탐색할 수 있는 배경, 확대와 선택 기능 구성
         /// </summary>
         public FSMGraphView()
         {
@@ -52,18 +62,26 @@ namespace UnityFramework.FSM.Editor
             Add(miniMap);
 
             graphViewChanged = OnGraphViewChanged;
-            RegisterCallback<MouseUpEvent>(_ => schedule.Execute(OnSelectionChanged).ExecuteLater(1));
-            RegisterCallback<KeyUpEvent>(_ => schedule.Execute(OnSelectionChanged).ExecuteLater(1));
+            RegisterCallback<MouseDownEvent>(OnMouseDown, TrickleDown.TrickleDown);
+            RegisterCallback<MouseUpEvent>(OnMouseUp);
+            RegisterCallback<KeyDownEvent>(OnKeyDown);
+            RegisterCallback<KeyUpEvent>(OnKeyUp);
         }
 
         /// <summary>
-        /// 에디트 모드에서 FSMData의 저장된 구조를 편집 가능한 그래프로 표시
+        /// 에디트 모드에서 FSMData를 Animator형 상태 그래프로 표시
         /// </summary>
         public void SetFSMData(FSMData fsmData)
+        {
+            SetFSMData(fsmData, true);
+        }
+
+        private void SetFSMData(FSMData fsmData, bool frameGraph)
         {
             ClearGraph();
             this.fsmData = fsmData;
             this.isEditable = fsmData != null;
+            this.isDataRefreshScheduled = false;
             if (fsmData == null)
                 return;
 
@@ -82,11 +100,26 @@ namespace UnityFramework.FSM.Editor
                 AddElement(stateNode);
             }
 
+            AddEntryVisual(fsmData.InitialStateID);
+
             IReadOnlyList<FSMTransitionData> transitions = fsmData.Transitions;
             for (int i = 0; i < transitions.Count; i++)
-                AddDataTransition(transitions[i]);
+            {
+                FSMTransitionData transition = transitions[i];
+                AddTransitionVisual(
+                    transition,
+                    transition,
+                    transition.FromStateID,
+                    transition.ToStateID,
+                    transition.Name,
+                    CalculateCurveOffset(transitions, i),
+                    CalculateMarkerTime(transitions, i),
+                    true);
+            }
 
-            schedule.Execute(() => FrameAll()).ExecuteLater(1);
+            schedule.Execute(UpdateAllTransitionMarkers).ExecuteLater(1);
+            if (frameGraph)
+                schedule.Execute(FrameGraph).ExecuteLater(1);
         }
 
         /// <summary>
@@ -97,17 +130,20 @@ namespace UnityFramework.FSM.Editor
             ClearGraph();
             this.fsmData = null;
             this.isEditable = false;
+            this.isDataRefreshScheduled = false;
             if (stateMachine == null)
                 return;
 
             List<State> states = new List<State>(stateMachine.GetStates().Values);
             states.Sort((left, right) => left.ID.CompareTo(right.ID));
+            FSMData sourceData = stateMachine.GetSourceData();
 
             for (int i = 0; i < states.Count; i++)
             {
                 State state = states[i];
-                var stateNode = new FSMStateNode(state.ID, state.Name, null, false, false);
-                FSMStateData sourceState = stateMachine.GetSourceData()?.FindState(state.ID);
+                FSMStateData sourceState = sourceData?.FindState(state.ID);
+                bool isInitial = sourceData != null && sourceData.InitialStateID == state.ID;
+                var stateNode = new FSMStateNode(state.ID, state.Name, null, isInitial, false);
                 stateNode.SetPosition(sourceState != null
                     ? new Rect(sourceState.Position, FSMStateNode.NodeSize)
                     : CalculateNodePosition(i, states.Count));
@@ -115,17 +151,30 @@ namespace UnityFramework.FSM.Editor
                 AddElement(stateNode);
             }
 
+            int? entryStateID = sourceData != null
+                ? sourceData.InitialStateID
+                : stateMachine.GetCurrentStateID();
+            if (entryStateID.HasValue)
+                AddEntryVisual(entryStateID.Value);
+
             IReadOnlyList<StateTransition> transitions = stateMachine.GetTransitions();
             for (int i = 0; i < transitions.Count; i++)
             {
                 StateTransition transition = transitions[i];
-                Edge edge = CreateEdge(transition.FromStateID, transition.ToStateID, transition.Name, false);
-                if (edge != null)
-                    this.transitionEdges.Add(transition, edge);
+                AddTransitionVisual(
+                    transition,
+                    null,
+                    transition.FromStateID,
+                    transition.ToStateID,
+                    transition.Name,
+                    CalculateCurveOffset(transitions, i),
+                    CalculateMarkerTime(transitions, i),
+                    false);
             }
 
             SetActiveState(stateMachine.GetCurrentStateID());
-            schedule.Execute(() => FrameAll()).ExecuteLater(1);
+            schedule.Execute(UpdateAllTransitionMarkers).ExecuteLater(1);
+            schedule.Execute(FrameGraph).ExecuteLater(1);
         }
 
         /// <summary>
@@ -138,7 +187,7 @@ namespace UnityFramework.FSM.Editor
         }
 
         /// <summary>
-        /// 초기 상태가 변경된 뒤 모든 노드의 시작 상태 표시 갱신
+        /// 초기 상태 변경을 노드 색상과 Entry 화살표에 반영
         /// </summary>
         public void RefreshInitialState()
         {
@@ -147,6 +196,7 @@ namespace UnityFramework.FSM.Editor
 
             foreach (KeyValuePair<int, FSMStateNode> stateNode in this.stateNodes)
                 stateNode.Value.SetInitial(stateNode.Key == this.fsmData.InitialStateID);
+            RebuildEntryVisual(this.fsmData.InitialStateID);
         }
 
         /// <summary>
@@ -156,130 +206,232 @@ namespace UnityFramework.FSM.Editor
         {
             if (elementData is FSMStateData state &&
                 this.stateNodes.TryGetValue(state.ID, out FSMStateNode stateNode))
+            {
                 stateNode.SetStateName(state.Name);
-            else if (elementData is FSMTransitionData transition &&
-                this.transitionEdges.TryGetValue(transition, out Edge edge))
-                edge.tooltip = transition.Name;
+                return;
+            }
+
+            if (elementData is FSMTransitionData transition &&
+                this.transitionEdges.TryGetValue(transition, out FSMTransitionEdge edge))
+                edge.SetTransitionName(transition.Name);
+        }
+
+        public void SelectTransition(FSMTransitionData transition)
+        {
+            if (transition != null &&
+                this.transitionEdges.TryGetValue(transition, out FSMTransitionEdge edge))
+            {
+                SelectTransition(edge);
+            }
         }
 
         /// <summary>
-        /// 마지막으로 평가된 전이를 성공 또는 실패 색상으로 강조
+        /// 마지막으로 평가된 전이선 강조
         /// </summary>
         public void HighlightTransition(StateTransition transition, StateChangeResult result)
         {
             ClearTransitionHighlight();
-            if (transition == null || !this.transitionEdges.TryGetValue(transition, out Edge edge))
+            if (transition == null ||
+                !this.transitionEdges.TryGetValue(transition, out FSMTransitionEdge edge))
                 return;
 
-            Color color = result == StateChangeResult.Success
+            SetEdgeColor(edge, result == StateChangeResult.Success
                 ? SuccessEdgeColor
-                : FailedEdgeColor;
-            SetEdgeColor(edge, color);
-            edge.BringToFront();
+                : FailedEdgeColor);
         }
 
-        /// <summary>
-        /// 전이 연결선 강조 상태 초기화
-        /// </summary>
         public void ClearTransitionHighlight()
         {
-            foreach (Edge edge in this.transitionEdges.Values)
+            foreach (FSMTransitionEdge edge in this.transitionEdges.Values)
                 SetEdgeColor(edge, DefaultEdgeColor);
         }
 
         /// <summary>
-        /// 에셋 편집 중 빈 공간의 메뉴에서 상태를 생성할 수 있도록 항목 추가
+        /// 상태에서는 Animator식 전이 생성 메뉴를, 빈 공간에서는 상태 생성 메뉴를 표시
         /// </summary>
         public override void BuildContextualMenu(ContextualMenuPopulateEvent menuEvent)
         {
             base.BuildContextualMenu(menuEvent);
-            if (!this.isEditable || this.CreateStateRequested == null)
+            if (!this.isEditable)
                 return;
 
+            VisualElement target = menuEvent.target as VisualElement;
+            FSMStateNode stateNode = target as FSMStateNode ??
+                target?.GetFirstAncestorOfType<FSMStateNode>();
+            if (stateNode != null && stateNode.GetStateData() != null)
+            {
+                menuEvent.menu.AppendSeparator();
+                menuEvent.menu.AppendAction("Make Transition", _ => BeginTransitionCreation(stateNode));
+                menuEvent.menu.AppendAction(
+                    "Set as Initial State",
+                    _ => this.InitialStateRequested?.Invoke(stateNode.GetStateData()),
+                    stateNode.GetStateID() == this.fsmData.InitialStateID
+                        ? DropdownMenuAction.Status.Disabled
+                        : DropdownMenuAction.Status.Normal);
+                return;
+            }
+
+            GraphElement graphElement = target as GraphElement ??
+                target?.GetFirstAncestorOfType<GraphElement>();
+            if (graphElement != null)
+                return;
+
+            if (this.transitionSourceNode != null)
+            {
+                menuEvent.menu.AppendAction("Cancel Transition", _ => CancelTransitionCreation());
+                return;
+            }
+
             Vector2 graphPosition = contentViewContainer.WorldToLocal(menuEvent.mousePosition);
-            menuEvent.menu.AppendAction("Create State", _ =>
-            {
-                FSMStateData state = this.CreateStateRequested.Invoke(graphPosition);
-                if (state != null)
-                    SetFSMData(this.fsmData);
-            });
+            this.CreateStateMenuRequested?.Invoke(menuEvent.menu, graphPosition);
         }
 
-        /// <summary>
-        /// 출력 포트에서 다른 노드의 입력 포트로만 연결 허용
-        /// </summary>
-        public override List<Port> GetCompatiblePorts(Port startPort, NodeAdapter nodeAdapter)
-        {
-            var compatiblePorts = new List<Port>();
-            ports.ForEach(port =>
-            {
-                if (port != startPort && port.node != startPort.node && port.direction != startPort.direction)
-                    compatiblePorts.Add(port);
-            });
-            return compatiblePorts;
-        }
-
-        /// <summary>
-        /// 노드 이동과 생성·삭제된 연결을 FSMData 변경 요청으로 변환
-        /// </summary>
         private GraphViewChange OnGraphViewChanged(GraphViewChange change)
         {
+            // 런타임 디버그 화면도 배치는 가능해야 하므로 이동 처리는 편집 가능 여부와 분리한다.
+            HandleMovedElements(change.movedElements);
             if (!this.isEditable)
                 return change;
 
-            if (change.movedElements != null)
-            {
-                for (int i = 0; i < change.movedElements.Count; i++)
-                {
-                    if (change.movedElements[i] is FSMStateNode node && node.GetStateData() != null)
-                        this.StateMoved?.Invoke(node.GetStateData(), node.GetPosition().position);
-                }
-            }
-
-            if (change.edgesToCreate != null)
-            {
-                for (int i = change.edgesToCreate.Count - 1; i >= 0; i--)
-                {
-                    Edge edge = change.edgesToCreate[i];
-                    if (!(edge.output?.node is FSMStateNode fromNode) ||
-                        !(edge.input?.node is FSMStateNode toNode))
-                    {
-                        change.edgesToCreate.RemoveAt(i);
-                        continue;
-                    }
-
-                    FSMTransitionData transition = this.TransitionCreated?.Invoke(
-                        fromNode.GetStateID(),
-                        toNode.GetStateID());
-                    if (transition == null)
-                    {
-                        change.edgesToCreate.RemoveAt(i);
-                        continue;
-                    }
-
-                    edge.userData = transition;
-                    edge.tooltip = transition.Name;
-                    this.transitionEdges.Add(transition, edge);
-                    SetEdgeColor(edge, DefaultEdgeColor);
-                }
-            }
-
-            if (change.elementsToRemove != null)
-            {
-                for (int i = 0; i < change.elementsToRemove.Count; i++)
-                {
-                    GraphElement element = change.elementsToRemove[i];
-                    if (element is FSMStateNode stateNode && stateNode.GetStateData() != null)
-                        this.StateRemoved?.Invoke(stateNode.GetStateData());
-                    else if (element is Edge edge && edge.userData is FSMTransitionData transition)
-                    {
-                        this.TransitionRemoved?.Invoke(transition);
-                        this.transitionEdges.Remove(transition);
-                    }
-                }
-            }
-
+            HandleRemovedElements(change.elementsToRemove);
             return change;
+        }
+
+        private void HandleMovedElements(List<GraphElement> movedElements)
+        {
+            if (movedElements == null || movedElements.Count == 0)
+                return;
+
+            if (this.isEditable && !this.isStateMoveActive)
+            {
+                this.isStateMoveActive = true;
+                this.StateMoveStarted?.Invoke();
+            }
+
+            // GraphViewChange는 노드에 새 좌표가 적용되기 전에 호출될 수 있다.
+            // 다음 UI 틱에서 실제 좌표를 읽어 데이터와 연결 표시를 함께 갱신한다.
+            ScheduleMovedElementsUpdate();
+        }
+
+        private void OnMouseUp(MouseUpEvent mouseEvent)
+        {
+            this.isStateMoveActive = false;
+            schedule.Execute(OnSelectionChanged).ExecuteLater(1);
+        }
+
+        private void OnKeyUp(KeyUpEvent keyEvent)
+        {
+            schedule.Execute(OnSelectionChanged).ExecuteLater(1);
+        }
+
+        private void FrameGraph()
+        {
+            FrameAll();
+        }
+
+        private void ScheduleMovedElementsUpdate()
+        {
+            if (this.isMoveUpdateScheduled)
+                return;
+
+            this.isMoveUpdateScheduled = true;
+            schedule.Execute(ApplyMovedElements).ExecuteLater(1);
+        }
+
+        private void ApplyMovedElements()
+        {
+            this.isMoveUpdateScheduled = false;
+            foreach (FSMStateNode stateNode in this.stateNodes.Values)
+            {
+                FSMStateData stateData = stateNode.GetStateData();
+                Vector2 position = stateNode.GetPosition().position;
+                if (stateData != null && stateData.Position != position)
+                    this.StateMoved?.Invoke(stateData, position);
+            }
+
+            UpdateAllTransitionMarkers();
+        }
+
+        /// <summary>
+        /// 상태 삭제에 딸려온 선은 RemoveState가 함께 정리하므로 전이를 중복 삭제하지 않는다.
+        /// </summary>
+        private void HandleRemovedElements(List<GraphElement> elementsToRemove)
+        {
+            if (elementsToRemove == null)
+                return;
+
+            var removedStateIDs = new HashSet<int>();
+            for (int i = 0; i < elementsToRemove.Count; i++)
+            {
+                if (elementsToRemove[i] is FSMStateNode stateNode && stateNode.GetStateData() != null)
+                    removedStateIDs.Add(stateNode.GetStateID());
+            }
+
+            bool requiresRefresh = false;
+            for (int i = 0; i < elementsToRemove.Count; i++)
+            {
+                GraphElement element = elementsToRemove[i];
+                if (element is FSMStateNode stateNode && stateNode.GetStateData() != null)
+                {
+                    this.StateRemoved?.Invoke(stateNode.GetStateData());
+                    requiresRefresh = true;
+                }
+                else if (element is FSMTransitionEdge edge &&
+                    edge.GetTransitionData() != null &&
+                    !removedStateIDs.Contains(edge.GetFromStateID()) &&
+                    !removedStateIDs.Contains(edge.GetToStateID()))
+                {
+                    this.TransitionRemoved?.Invoke(edge.GetTransitionData());
+                    requiresRefresh = true;
+                }
+            }
+
+            if (requiresRefresh)
+                ScheduleDataRefresh();
+        }
+
+        private void OnMouseDown(MouseDownEvent mouseEvent)
+        {
+            if (!this.isEditable || this.transitionSourceNode == null || mouseEvent.button != 0)
+                return;
+
+            VisualElement target = mouseEvent.target as VisualElement;
+            FSMStateNode targetNode = target as FSMStateNode ??
+                target?.GetFirstAncestorOfType<FSMStateNode>();
+            if (targetNode == null || targetNode.GetStateData() == null)
+                return;
+
+            FSMTransitionData transition = this.TransitionCreated?.Invoke(
+                this.transitionSourceNode.GetStateID(),
+                targetNode.GetStateID());
+            CancelTransitionCreation();
+
+            if (transition != null)
+                SetFSMData(this.fsmData);
+            mouseEvent.StopImmediatePropagation();
+        }
+
+        private void OnKeyDown(KeyDownEvent keyEvent)
+        {
+            if (keyEvent.keyCode != KeyCode.Escape || this.transitionSourceNode == null)
+                return;
+
+            CancelTransitionCreation();
+            keyEvent.StopImmediatePropagation();
+        }
+
+        private void BeginTransitionCreation(FSMStateNode stateNode)
+        {
+            CancelTransitionCreation();
+            this.transitionSourceNode = stateNode;
+            this.transitionSourceNode.SetTransitionSource(true);
+        }
+
+        private void CancelTransitionCreation()
+        {
+            if (this.transitionSourceNode != null)
+                this.transitionSourceNode.SetTransitionSource(false);
+            this.transitionSourceNode = null;
         }
 
         /// <summary>
@@ -298,7 +450,7 @@ namespace UnityFramework.FSM.Editor
                     return;
                 }
 
-                if (selectedElement is Edge edge)
+                if (selectedElement is FSMTransitionEdge edge)
                 {
                     this.ElementSelected.Invoke(edge.userData);
                     return;
@@ -308,54 +460,352 @@ namespace UnityFramework.FSM.Editor
             this.ElementSelected.Invoke(null);
         }
 
-        private void AddDataTransition(FSMTransitionData transition)
+        private void AddEntryVisual(int initialStateID)
         {
-            Edge edge = CreateEdge(
-                transition.FromStateID,
-                transition.ToStateID,
-                transition.Name,
-                true);
-            if (edge == null)
+            if (!this.stateNodes.TryGetValue(initialStateID, out FSMStateNode initialNode))
                 return;
 
-            edge.userData = transition;
-            this.transitionEdges.Add(transition, edge);
+            Rect stateRect = initialNode.GetPosition();
+            Vector2 entryPosition = new Vector2(
+                stateRect.center.x - FSMEntryNode.NodeSize.x * 0.5f,
+                stateRect.yMin - 105.0f);
+            this.entryNode = new FSMEntryNode();
+            this.entryNode.SetPosition(new Rect(entryPosition, FSMEntryNode.NodeSize));
+            AddElement(this.entryNode);
+
+            this.entryEdge = CreateTransitionEdge(
+                null,
+                null,
+                this.entryNode.GetOutputPort(),
+                initialNode.CreateCenterPort(Direction.Input),
+                -1,
+                initialStateID,
+                string.Empty,
+                0.0f,
+                0.56f,
+                false);
+            this.entryEdge.pickingMode = PickingMode.Ignore;
+            this.entryEdge.capabilities &= ~(Capabilities.Selectable | Capabilities.Deletable);
+            FSMTransitionMarker marker = CreateTransitionMarker(
+                this.entryNode.GetPosition().center,
+                initialNode.GetPosition().center,
+                0.0f,
+                0.56f,
+                false,
+                EntryEdgeColor);
+            this.entryEdge.SetTransitionMarker(marker);
+            SetEdgeColor(this.entryEdge, EntryEdgeColor);
         }
 
-        private Edge CreateEdge(int fromStateID, int toStateID, string transitionName, bool editable)
+        private void RebuildEntryVisual(int initialStateID)
+        {
+            RemoveTransitionVisual(this.entryEdge);
+            this.entryEdge = null;
+            if (this.entryNode != null)
+            {
+                RemoveElement(this.entryNode);
+                this.entryNode = null;
+            }
+
+            AddEntryVisual(initialStateID);
+        }
+
+        private void AddTransitionVisual(
+            object transitionKey,
+            FSMTransitionData transitionData,
+            int fromStateID,
+            int toStateID,
+            string transitionName,
+            float curveOffset,
+            float markerTime,
+            bool editable)
         {
             if (!this.stateNodes.TryGetValue(fromStateID, out FSMStateNode fromNode) ||
                 !this.stateNodes.TryGetValue(toStateID, out FSMStateNode toNode))
-                return null;
+                return;
 
-            var edge = new Edge
+            bool isSelfTransition = fromStateID == toStateID;
+            Port outputPort;
+            Port inputPort;
+            if (isSelfTransition)
             {
-                output = fromNode.GetOutputPort(),
-                input = toNode.GetInputPort(),
-                tooltip = transitionName
-            };
+                outputPort = fromNode.CreateSelfPort(Direction.Output, -10.0f);
+                inputPort = toNode.CreateSelfPort(Direction.Input, 10.0f);
+            }
+            else
+            {
+                outputPort = fromNode.CreateCenterPort(Direction.Output);
+                inputPort = toNode.CreateCenterPort(Direction.Input);
+            }
+
+            FSMTransitionEdge edge = CreateTransitionEdge(
+                transitionKey,
+                transitionData,
+                outputPort,
+                inputPort,
+                fromStateID,
+                toStateID,
+                transitionName,
+                curveOffset,
+                markerTime,
+                isSelfTransition);
             if (!editable)
                 edge.capabilities &= ~Capabilities.Deletable;
 
+            this.transitionEdges.Add(transitionKey, edge);
+            FSMTransitionMarker marker = CreateTransitionMarker(
+                fromNode.GetPosition().center,
+                toNode.GetPosition().center,
+                curveOffset,
+                markerTime,
+                isSelfTransition,
+                DefaultEdgeColor);
+            edge.SetTransitionMarker(marker);
+            SetEdgeColor(edge, DefaultEdgeColor);
+        }
+
+        private FSMTransitionEdge CreateTransitionEdge(
+            object transitionKey,
+            FSMTransitionData transitionData,
+            Port outputPort,
+            Port inputPort,
+            int fromStateID,
+            int toStateID,
+            string transitionName,
+            float curveOffset,
+            float markerTime,
+            bool isSelfTransition)
+        {
+            var edge = new FSMTransitionEdge(
+                transitionKey,
+                transitionData,
+                fromStateID,
+                toStateID,
+                transitionName,
+                curveOffset,
+                markerTime,
+                isSelfTransition)
+            {
+                output = outputPort,
+                input = inputPort,
+                userData = transitionData ?? transitionKey
+            };
             edge.output.Connect(edge);
             edge.input.Connect(edge);
+            edge.SelectionRequested = SelectTransition;
             AddElement(edge);
-            SetEdgeColor(edge, DefaultEdgeColor);
+            edge.edgeControl.edgeWidth = 2;
+            edge.edgeControl.interceptWidth = 14;
+            edge.edgeControl.drawFromCap = false;
+            edge.edgeControl.drawToCap = false;
             return edge;
+        }
+
+        /// <summary>
+        /// 가느다란 선의 기본 선택 이벤트에 의존하지 않고 클릭한 전이 데이터를 상세 패널에 전달
+        /// </summary>
+        private void SelectTransition(FSMTransitionEdge edge)
+        {
+            if (edge == null)
+                return;
+
+            ClearSelection();
+            AddToSelection(edge);
+            this.ElementSelected?.Invoke(edge.GetTransitionData() ?? edge.GetTransitionKey());
+        }
+
+        private FSMTransitionMarker CreateTransitionMarker(
+            Vector2 start,
+            Vector2 end,
+            float curveOffset,
+            float markerTime,
+            bool isSelfTransition,
+            Color color)
+        {
+            CalculateCurvePointAndTangent(
+                start,
+                end,
+                curveOffset,
+                isSelfTransition,
+                markerTime,
+                out Vector2 point,
+                out Vector2 tangent);
+            var marker = new FSMTransitionMarker();
+            marker.SetDirection(point, tangent);
+            marker.SetColor(color);
+            AddElement(marker);
+            marker.BringToFront();
+            return marker;
+        }
+
+        /// <summary>
+        /// 노드를 다시 만들지 않고 드래그 중인 선의 방향 마커 위치만 갱신
+        /// </summary>
+        private void UpdateAllTransitionMarkers()
+        {
+            foreach (FSMTransitionEdge edge in this.transitionEdges.Values)
+            {
+                if (!this.stateNodes.TryGetValue(edge.GetFromStateID(), out FSMStateNode fromNode) ||
+                    !this.stateNodes.TryGetValue(edge.GetToStateID(), out FSMStateNode toNode))
+                    continue;
+
+                edge.UpdateTransitionMarker(
+                    fromNode.GetPosition().center,
+                    toNode.GetPosition().center);
+            }
+
+            if (this.entryEdge != null && this.entryNode != null &&
+                this.stateNodes.TryGetValue(this.entryEdge.GetToStateID(), out FSMStateNode initialNode))
+            {
+                this.entryEdge.UpdateTransitionMarker(
+                    this.entryNode.GetPosition().center,
+                    initialNode.GetPosition().center);
+            }
+        }
+
+        private void ScheduleDataRefresh()
+        {
+            if (this.isDataRefreshScheduled)
+                return;
+
+            this.isDataRefreshScheduled = true;
+            schedule.Execute(RefreshDataAfterGraphChange).ExecuteLater(1);
+        }
+
+        private void RefreshDataAfterGraphChange()
+        {
+            this.isDataRefreshScheduled = false;
+            if (this.isEditable)
+                SetFSMData(this.fsmData, false);
+        }
+
+        private void RemoveTransitionVisual(FSMTransitionEdge edge)
+        {
+            if (edge == null)
+                return;
+
+            FSMTransitionMarker marker = edge.GetTransitionMarker();
+            if (marker != null)
+                RemoveElement(marker);
+            RemoveElement(edge);
         }
 
         private void ClearGraph()
         {
-            // 화면을 다시 그릴 때 삭제 콜백이 에셋 데이터까지 지우지 않도록 편집을 먼저 잠근다.
             this.isEditable = false;
-            foreach (Edge edge in this.transitionEdges.Values)
-                RemoveElement(edge);
+            this.isDataRefreshScheduled = false;
+            this.isMoveUpdateScheduled = false;
+            this.isStateMoveActive = false;
+            CancelTransitionCreation();
+            ClearSelection();
+
+            RemoveTransitionVisual(this.entryEdge);
+            foreach (FSMTransitionEdge edge in this.transitionEdges.Values)
+                RemoveTransitionVisual(edge);
+            if (this.entryNode != null)
+                RemoveElement(this.entryNode);
             foreach (FSMStateNode stateNode in this.stateNodes.Values)
                 RemoveElement(stateNode);
 
+            this.entryEdge = null;
+            this.entryNode = null;
             this.transitionEdges.Clear();
             this.stateNodes.Clear();
             this.ElementSelected?.Invoke(null);
+        }
+
+        private static float CalculateCurveOffset(
+            IReadOnlyList<FSMTransitionData> transitions,
+            int transitionIndex)
+        {
+            FSMTransitionData current = transitions[transitionIndex];
+            bool hasReverse = false;
+
+            for (int i = 0; i < transitions.Count; i++)
+            {
+                FSMTransitionData transition = transitions[i];
+                if (transition.FromStateID == current.ToStateID &&
+                    transition.ToStateID == current.FromStateID)
+                {
+                    hasReverse = true;
+                }
+            }
+
+            return hasReverse && current.FromStateID != current.ToStateID
+                ? ReverseTransitionOffset
+                : 0.0f;
+        }
+
+        private static float CalculateCurveOffset(
+            IReadOnlyList<StateTransition> transitions,
+            int transitionIndex)
+        {
+            StateTransition current = transitions[transitionIndex];
+            bool hasReverse = false;
+
+            for (int i = 0; i < transitions.Count; i++)
+            {
+                StateTransition transition = transitions[i];
+                if (transition.FromStateID == current.ToStateID &&
+                    transition.ToStateID == current.FromStateID)
+                {
+                    hasReverse = true;
+                }
+            }
+
+            return hasReverse && current.FromStateID != current.ToStateID
+                ? ReverseTransitionOffset
+                : 0.0f;
+        }
+
+        private static float CalculateMarkerTime(
+            IReadOnlyList<FSMTransitionData> transitions,
+            int transitionIndex)
+        {
+            FSMTransitionData current = transitions[transitionIndex];
+            int sameCount = 0;
+            int sameIndex = 0;
+            for (int i = 0; i < transitions.Count; i++)
+            {
+                FSMTransitionData transition = transitions[i];
+                if (transition.FromStateID != current.FromStateID ||
+                    transition.ToStateID != current.ToStateID)
+                    continue;
+
+                if (i < transitionIndex)
+                    sameIndex++;
+                sameCount++;
+            }
+
+            return CalculateMarkerTime(sameIndex, sameCount);
+        }
+
+        private static float CalculateMarkerTime(
+            IReadOnlyList<StateTransition> transitions,
+            int transitionIndex)
+        {
+            StateTransition current = transitions[transitionIndex];
+            int sameCount = 0;
+            int sameIndex = 0;
+            for (int i = 0; i < transitions.Count; i++)
+            {
+                StateTransition transition = transitions[i];
+                if (transition.FromStateID != current.FromStateID ||
+                    transition.ToStateID != current.ToStateID)
+                    continue;
+
+                if (i < transitionIndex)
+                    sameIndex++;
+                sameCount++;
+            }
+
+            return CalculateMarkerTime(sameIndex, sameCount);
+        }
+
+        private static float CalculateMarkerTime(int sameIndex, int sameCount)
+        {
+            float centeredIndex = sameIndex - (sameCount - 1) * 0.5f;
+            return Mathf.Clamp(0.5f + centeredIndex * 0.07f, 0.25f, 0.75f);
         }
 
         /// <summary>
@@ -374,6 +824,70 @@ namespace UnityFramework.FSM.Editor
             return new Rect(position, FSMStateNode.NodeSize);
         }
 
+        /// <summary>
+        /// 선 렌더링과 중앙 방향 마커가 같은 베지어 곡선을 사용하도록 제어점 계산 공유
+        /// </summary>
+        private static void CalculateCurveControlPoints(
+            Vector2 start,
+            Vector2 end,
+            float curveOffset,
+            bool isSelfTransition,
+            out Vector2 point0,
+            out Vector2 point1,
+            out Vector2 point2,
+            out Vector2 point3)
+        {
+            point0 = start;
+            point3 = end;
+
+            if (isSelfTransition)
+            {
+                float loopWidth = 85.0f + Mathf.Abs(curveOffset);
+                point1 = start + new Vector2(loopWidth, -55.0f);
+                point2 = end + new Vector2(loopWidth, 55.0f);
+                return;
+            }
+
+            Vector2 distance = end - start;
+            Vector2 normal = distance.sqrMagnitude > 0.001f
+                ? new Vector2(-distance.y, distance.x).normalized
+                : Vector2.up;
+            Vector2 offset = normal * curveOffset;
+            point0 += offset;
+            point3 += offset;
+            point1 = Vector2.Lerp(point0, point3, 0.33f);
+            point2 = Vector2.Lerp(point0, point3, 0.67f);
+        }
+
+        private static void CalculateCurvePointAndTangent(
+            Vector2 start,
+            Vector2 end,
+            float curveOffset,
+            bool isSelfTransition,
+            float time,
+            out Vector2 point,
+            out Vector2 tangent)
+        {
+            CalculateCurveControlPoints(
+                start,
+                end,
+                curveOffset,
+                isSelfTransition,
+                out Vector2 point0,
+                out Vector2 point1,
+                out Vector2 point2,
+                out Vector2 point3);
+
+            float inverseTime = 1.0f - time;
+            point = inverseTime * inverseTime * inverseTime * point0 +
+                3.0f * inverseTime * inverseTime * time * point1 +
+                3.0f * inverseTime * time * time * point2 +
+                time * time * time * point3;
+            tangent = 3.0f * inverseTime * inverseTime * (point1 - point0) +
+                6.0f * inverseTime * time * (point2 - point1) +
+                3.0f * time * time * (point3 - point2);
+        }
+
         private static void SetEdgeColor(Edge edge, Color color)
         {
             if (edge.edgeControl == null)
@@ -381,22 +895,244 @@ namespace UnityFramework.FSM.Editor
 
             edge.edgeControl.inputColor = color;
             edge.edgeControl.outputColor = color;
+            if (edge is FSMTransitionEdge transitionEdge)
+                transitionEdge.SetArrowColor(color);
             edge.edgeControl.MarkDirtyRepaint();
+        }
+
+        private sealed class FSMTransitionEdge : Edge
+        {
+            private readonly object transitionKey;
+            private readonly FSMTransitionData transitionData;
+            private readonly int fromStateID;
+            private readonly int toStateID;
+            private readonly float curveOffset;
+            private readonly float markerTime;
+            private readonly bool isSelfTransition;
+            private FSMTransitionMarker transitionMarker;
+
+            public Action<FSMTransitionEdge> SelectionRequested;
+
+            public FSMTransitionEdge(
+                object transitionKey,
+                FSMTransitionData transitionData,
+                int fromStateID,
+                int toStateID,
+                string transitionName,
+                float curveOffset,
+                float markerTime,
+                bool isSelfTransition)
+            {
+                this.transitionKey = transitionKey;
+                this.transitionData = transitionData;
+                this.fromStateID = fromStateID;
+                this.toStateID = toStateID;
+                this.curveOffset = curveOffset;
+                this.markerTime = markerTime;
+                this.isSelfTransition = isSelfTransition;
+                tooltip = transitionName;
+                ((FSMAnimatorEdgeControl)edgeControl).SetCurve(curveOffset, isSelfTransition);
+                RegisterCallback<MouseDownEvent>(OnMouseDown);
+            }
+
+            private void OnMouseDown(MouseDownEvent mouseEvent)
+            {
+                if (mouseEvent.button != 0)
+                    return;
+
+                RequestSelection();
+                mouseEvent.StopPropagation();
+            }
+
+            protected override EdgeControl CreateEdgeControl()
+            {
+                return new FSMAnimatorEdgeControl();
+            }
+
+            public object GetTransitionKey() => this.transitionKey;
+
+            public FSMTransitionData GetTransitionData() => this.transitionData;
+
+            public FSMTransitionMarker GetTransitionMarker() => this.transitionMarker;
+
+            public int GetFromStateID() => this.fromStateID;
+
+            public int GetToStateID() => this.toStateID;
+
+            public void RequestSelection()
+            {
+                this.SelectionRequested?.Invoke(this);
+            }
+
+            public void SetTransitionName(string transitionName)
+            {
+                tooltip = transitionName;
+            }
+
+            public void SetTransitionMarker(FSMTransitionMarker transitionMarker)
+            {
+                this.transitionMarker = transitionMarker;
+                this.transitionMarker?.SetTransitionEdge(this);
+            }
+
+            public void SetArrowColor(Color color)
+            {
+                this.transitionMarker?.SetColor(color);
+            }
+
+            public void UpdateTransitionMarker(Vector2 start, Vector2 end)
+            {
+                if (this.transitionMarker == null)
+                    return;
+
+                CalculateCurvePointAndTangent(
+                    start,
+                    end,
+                    this.curveOffset,
+                    this.isSelfTransition,
+                    this.markerTime,
+                    out Vector2 point,
+                    out Vector2 tangent);
+                this.transitionMarker.SetDirection(point, tangent);
+                this.transitionMarker.BringToFront();
+            }
+        }
+
+        private sealed class FSMTransitionMarker : GraphElement
+        {
+            private static readonly Vector2 MarkerSize = new Vector2(18.0f, 18.0f);
+
+            private readonly VisualElement arrowVisual;
+            private readonly VisualElement arrowHead;
+            private FSMTransitionEdge transitionEdge;
+
+            public FSMTransitionMarker()
+            {
+                capabilities &= ~(
+                    Capabilities.Copiable |
+                    Capabilities.Deletable |
+                    Capabilities.Movable |
+                    Capabilities.Renamable |
+                    Capabilities.Selectable);
+                pickingMode = PickingMode.Position;
+                AddToClassList("fsm-transition-marker");
+
+                this.arrowVisual = new VisualElement();
+                this.arrowVisual.pickingMode = PickingMode.Ignore;
+                this.arrowVisual.AddToClassList("fsm-transition-arrow");
+                this.arrowHead = new VisualElement();
+                this.arrowHead.pickingMode = PickingMode.Ignore;
+                this.arrowHead.AddToClassList("fsm-transition-arrow-head");
+                this.arrowHead.style.rotate = new Rotate(new Angle(45.0f, AngleUnit.Degree));
+                this.arrowVisual.Add(this.arrowHead);
+                Add(this.arrowVisual);
+                RegisterCallback<MouseDownEvent>(OnMouseDown);
+            }
+
+            public void SetTransitionEdge(FSMTransitionEdge transitionEdge)
+            {
+                this.transitionEdge = transitionEdge;
+            }
+
+            public void SetDirection(Vector2 position, Vector2 tangent)
+            {
+                SetPosition(new Rect(position - MarkerSize * 0.5f, MarkerSize));
+                float angle = tangent.sqrMagnitude > 0.001f
+                    ? Mathf.Atan2(tangent.y, tangent.x) * Mathf.Rad2Deg
+                    : 0.0f;
+                this.arrowVisual.style.rotate = new Rotate(new Angle(angle, AngleUnit.Degree));
+            }
+
+            public void SetColor(Color color)
+            {
+                this.arrowHead.style.borderTopColor = color;
+                this.arrowHead.style.borderRightColor = color;
+            }
+
+            private void OnMouseDown(MouseDownEvent mouseEvent)
+            {
+                if (mouseEvent.button != 0 || this.transitionEdge == null)
+                    return;
+
+                this.transitionEdge.RequestSelection();
+                mouseEvent.StopPropagation();
+            }
+        }
+
+        private sealed class FSMAnimatorEdgeControl : EdgeControl
+        {
+            private float curveOffset;
+            private bool isSelfTransition;
+
+            public void SetCurve(float curveOffset, bool isSelfTransition)
+            {
+                this.curveOffset = curveOffset;
+                this.isSelfTransition = isSelfTransition;
+            }
+
+            protected override void ComputeControlPoints()
+            {
+                base.ComputeControlPoints();
+                Vector2[] points = controlPoints;
+                if (points == null || points.Length < 4)
+                    return;
+
+                CalculateControlPoints(from, to, points);
+            }
+
+            private void CalculateControlPoints(Vector2 start, Vector2 end, Vector2[] points)
+            {
+                CalculateCurveControlPoints(
+                    start,
+                    end,
+                    this.curveOffset,
+                    this.isSelfTransition,
+                    out points[0],
+                    out points[1],
+                    out points[2],
+                    out points[3]);
+            }
+        }
+
+        private sealed class FSMEntryNode : Node
+        {
+            public static readonly Vector2 NodeSize = new Vector2(150.0f, 38.0f);
+
+            private readonly Port outputPort;
+
+            public FSMEntryNode()
+            {
+                title = "Entry";
+                capabilities &= ~(
+                    Capabilities.Copiable |
+                    Capabilities.Deletable |
+                    Capabilities.Movable |
+                    Capabilities.Renamable |
+                    Capabilities.Selectable);
+                AddToClassList("fsm-entry-node");
+
+                this.outputPort = CreateHiddenPort(Direction.Output);
+                this.outputPort.style.left = NodeSize.x * 0.5f;
+                this.outputPort.style.top = NodeSize.y * 0.5f;
+                Add(this.outputPort);
+                inputContainer.style.display = DisplayStyle.None;
+                outputContainer.style.display = DisplayStyle.None;
+                extensionContainer.style.display = DisplayStyle.None;
+                titleButtonContainer.style.display = DisplayStyle.None;
+                RefreshExpandedState();
+            }
+
+            public Port GetOutputPort() => this.outputPort;
         }
 
         private sealed class FSMStateNode : Node
         {
-            private static readonly Color DefaultTitleColor = new Color(0.18f, 0.2f, 0.24f);
-            private static readonly Color ActiveTitleColor = new Color(0.12f, 0.56f, 0.35f);
-
-            public static readonly Vector2 NodeSize = new Vector2(190.0f, 105.0f);
+            public static readonly Vector2 NodeSize = new Vector2(200.0f, 58.0f);
 
             private readonly int stateID;
             private readonly FSMStateData stateData;
-            private readonly Port inputPort;
-            private readonly Port outputPort;
-            private readonly Label stateStatusLabel;
             private bool isInitial;
+            private bool isActive;
 
             public FSMStateNode(
                 int stateID,
@@ -415,43 +1151,40 @@ namespace UnityFramework.FSM.Editor
                     capabilities &= ~Capabilities.Deletable;
                 AddToClassList("fsm-state-node");
 
-                this.inputPort = Port.Create<Edge>(
-                    Orientation.Horizontal,
-                    Direction.Input,
-                    Port.Capacity.Multi,
-                    typeof(bool));
-                this.inputPort.portName = string.Empty;
-                inputContainer.Add(this.inputPort);
-
-                this.outputPort = Port.Create<Edge>(
-                    Orientation.Horizontal,
-                    Direction.Output,
-                    Port.Capacity.Multi,
-                    typeof(bool));
-                this.outputPort.portName = string.Empty;
-                outputContainer.Add(this.outputPort);
-
-                this.stateStatusLabel = new Label();
-                this.stateStatusLabel.AddToClassList("fsm-state-id");
-                extensionContainer.Add(this.stateStatusLabel);
-
-                RefreshPorts();
+                inputContainer.style.display = DisplayStyle.None;
+                outputContainer.style.display = DisplayStyle.None;
+                extensionContainer.style.display = DisplayStyle.None;
+                titleButtonContainer.style.display = DisplayStyle.None;
                 RefreshExpandedState();
-                SetActive(false);
+                RefreshVisualState();
             }
 
             public int GetStateID() => this.stateID;
 
             public FSMStateData GetStateData() => this.stateData;
 
-            public Port GetInputPort() => this.inputPort;
+            public Port CreateCenterPort(Direction direction)
+            {
+                Port port = CreateHiddenPort(direction);
+                port.style.left = NodeSize.x * 0.5f;
+                port.style.top = NodeSize.y * 0.5f;
+                Add(port);
+                return port;
+            }
 
-            public Port GetOutputPort() => this.outputPort;
+            public Port CreateSelfPort(Direction direction, float verticalOffset)
+            {
+                Port port = CreateHiddenPort(direction);
+                port.style.left = NodeSize.x * 0.5f;
+                port.style.top = NodeSize.y * 0.5f + verticalOffset;
+                Add(port);
+                return port;
+            }
 
             public void SetInitial(bool initial)
             {
                 this.isInitial = initial;
-                UpdateStatusLabel(false);
+                RefreshVisualState();
             }
 
             public void SetStateName(string stateName)
@@ -461,19 +1194,33 @@ namespace UnityFramework.FSM.Editor
 
             public void SetActive(bool active)
             {
-                titleContainer.style.backgroundColor = active
-                    ? ActiveTitleColor
-                    : DefaultTitleColor;
-                EnableInClassList("fsm-state-node--active", active);
-                UpdateStatusLabel(active);
+                this.isActive = active;
+                RefreshVisualState();
             }
 
-            private void UpdateStatusLabel(bool active)
+            public void SetTransitionSource(bool transitionSource)
             {
-                string initialText = this.isInitial ? "  INITIAL" : string.Empty;
-                string activeText = active ? "  ACTIVE" : string.Empty;
-                this.stateStatusLabel.text = $"ID  {this.stateID}{initialText}{activeText}";
+                EnableInClassList("fsm-state-node--transition-source", transitionSource);
             }
+
+            private void RefreshVisualState()
+            {
+                EnableInClassList("fsm-state-node--initial", this.isInitial);
+                EnableInClassList("fsm-state-node--active", this.isActive);
+            }
+        }
+
+        private static Port CreateHiddenPort(Direction direction)
+        {
+            Port port = Port.Create<Edge>(
+                Orientation.Horizontal,
+                direction,
+                Port.Capacity.Multi,
+                typeof(bool));
+            port.portName = string.Empty;
+            port.pickingMode = PickingMode.Ignore;
+            port.AddToClassList("fsm-hidden-port");
+            return port;
         }
     }
 }

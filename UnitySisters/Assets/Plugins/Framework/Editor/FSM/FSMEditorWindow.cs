@@ -24,6 +24,14 @@ namespace UnityFramework.FSM.Editor
         private readonly List<IStateMachine> scanResults = new List<IStateMachine>();
         private readonly List<string> machineNames = new List<string>();
         private readonly List<string> transitionHistory = new List<string>();
+        private readonly List<Type> stateIDTypes = new List<Type>();
+        private readonly List<string> stateIDTypeNames = new List<string>();
+        private readonly List<Type> conditionTypes = new List<Type>();
+        private readonly List<string> conditionTypeNames = new List<string>();
+        private readonly List<string> conditionNames = new List<string>();
+        private readonly List<int> conditionIDs = new List<int>();
+        private readonly List<FSMTransitionData> selectedTransitionGroup =
+            new List<FSMTransitionData>();
 
         private ViewMode viewMode;
         private ToolbarToggle assetModeToggle;
@@ -38,10 +46,15 @@ namespace UnityFramework.FSM.Editor
         private Label transitionCountValueLabel;
         private VisualElement editPanel;
         private Label selectionTypeLabel;
+        private DropdownField stateIDTypeField;
+        private DropdownField conditionTypeField;
         private TextField nameField;
         private Toggle initialStateToggle;
-        private TextField conditionKeyField;
+        private Toggle hasConditionToggle;
+        private DropdownField conditionField;
         private IntegerField priorityField;
+        private Label transitionListTitle;
+        private ListView transitionList;
         private ListView historyList;
         private FSMGraphView graphView;
         private FSMData selectedData;
@@ -50,6 +63,7 @@ namespace UnityFramework.FSM.Editor
         private double nextMachineRefreshTime;
         private double transitionHighlightEndTime;
         private bool isUpdatingFields;
+        private bool isUndoRefreshScheduled;
 
         [MenuItem("Tools/FSM/Editor")]
         public static void OpenWindow()
@@ -95,15 +109,19 @@ namespace UnityFramework.FSM.Editor
                 rootVisualElement.styleSheets.Add(styleSheet);
 
             rootVisualElement.Add(CreateToolbar());
+            RefreshStateIDTypes();
+            RefreshConditionTypes();
 
             var splitView = new TwoPaneSplitView(1, 300.0f, TwoPaneSplitViewOrientation.Horizontal);
             splitView.style.flexGrow = 1.0f;
             rootVisualElement.Add(splitView);
 
             this.graphView = new FSMGraphView();
-            this.graphView.CreateStateRequested = CreateState;
+            this.graphView.CreateStateMenuRequested = BuildCreateStateMenu;
+            this.graphView.StateMoveStarted = BeginMoveState;
             this.graphView.StateMoved = MoveState;
             this.graphView.StateRemoved = RemoveState;
+            this.graphView.InitialStateRequested = SetInitialState;
             this.graphView.TransitionCreated = CreateTransition;
             this.graphView.TransitionRemoved = RemoveTransition;
             this.graphView.ElementSelected = SetSelectedElementData;
@@ -215,6 +233,16 @@ namespace UnityFramework.FSM.Editor
             var panel = new VisualElement();
             panel.AddToClassList("fsm-edit-panel");
 
+            this.stateIDTypeField = new DropdownField("State ID Type");
+            this.stateIDTypeField.choices = new List<string>(this.stateIDTypeNames);
+            this.stateIDTypeField.RegisterValueChangedCallback(OnStateIDTypeChanged);
+            panel.Add(this.stateIDTypeField);
+
+            this.conditionTypeField = new DropdownField("Condition Type");
+            this.conditionTypeField.choices = new List<string>(this.conditionTypeNames);
+            this.conditionTypeField.RegisterValueChangedCallback(OnConditionTypeChanged);
+            panel.Add(this.conditionTypeField);
+
             this.selectionTypeLabel = new Label("No Selection");
             this.selectionTypeLabel.AddToClassList("fsm-section-title");
             panel.Add(this.selectionTypeLabel);
@@ -227,14 +255,53 @@ namespace UnityFramework.FSM.Editor
             this.initialStateToggle.RegisterValueChangedCallback(OnInitialStateChanged);
             panel.Add(this.initialStateToggle);
 
-            this.conditionKeyField = new TextField("Condition Key");
-            this.conditionKeyField.RegisterValueChangedCallback(OnConditionKeyChanged);
-            panel.Add(this.conditionKeyField);
+            this.hasConditionToggle = new Toggle("Has Condition");
+            this.hasConditionToggle.RegisterValueChangedCallback(OnHasConditionChanged);
+            panel.Add(this.hasConditionToggle);
+
+            this.conditionField = new DropdownField("Condition");
+            this.conditionField.RegisterValueChangedCallback(OnConditionChanged);
+            panel.Add(this.conditionField);
 
             this.priorityField = new IntegerField("Priority");
             this.priorityField.RegisterValueChangedCallback(OnPriorityChanged);
             panel.Add(this.priorityField);
+
+            this.transitionListTitle = new Label("Transitions");
+            this.transitionListTitle.AddToClassList("fsm-section-title");
+            panel.Add(this.transitionListTitle);
+
+            this.transitionList = new ListView
+            {
+                itemsSource = this.selectedTransitionGroup,
+                fixedItemHeight = 24.0f,
+                selectionType = SelectionType.Single,
+                makeItem = CreateTransitionItem,
+                bindItem = BindTransitionItem
+            };
+            this.transitionList.selectionChanged += OnTransitionListSelectionChanged;
+            this.transitionList.AddToClassList("fsm-transition-list");
+            panel.Add(this.transitionList);
             return panel;
+        }
+
+        private static VisualElement CreateTransitionItem()
+        {
+            var label = new Label();
+            label.AddToClassList("fsm-transition-list-item");
+            return label;
+        }
+
+        private void BindTransitionItem(VisualElement element, int index)
+        {
+            if (!(element is Label label) || index < 0 ||
+                index >= this.selectedTransitionGroup.Count)
+                return;
+
+            FSMTransitionData transition = this.selectedTransitionGroup[index];
+            label.text = string.IsNullOrEmpty(transition.Name)
+                ? $"Transition {index + 1}"
+                : transition.Name;
         }
 
         private static Label AddDetailRow(VisualElement parent, string title)
@@ -286,6 +353,8 @@ namespace UnityFramework.FSM.Editor
                 SetSelectedStateMachine(null);
                 this.dataField?.SetValueWithoutNotify(this.selectedData);
                 this.graphView?.SetFSMData(this.selectedData);
+                UpdateStateIDTypeField();
+                UpdateConditionTypeField();
             }
             else
             {
@@ -307,6 +376,8 @@ namespace UnityFramework.FSM.Editor
             this.dataField?.SetValueWithoutNotify(fsmData);
             if (this.viewMode == ViewMode.AssetEdit)
                 this.graphView?.SetFSMData(fsmData);
+            UpdateStateIDTypeField();
+            UpdateConditionTypeField();
             SetSelectedElementData(null);
             UpdateDetailPanel();
         }
@@ -328,16 +399,85 @@ namespace UnityFramework.FSM.Editor
             SetSelectedData(fsmData);
         }
 
-        private FSMStateData CreateState(Vector2 position)
+        /// <summary>
+        /// State ID 타입 연결 여부에 따라 자동 ID 또는 enum 항목 생성 메뉴 구성
+        /// </summary>
+        private void BuildCreateStateMenu(DropdownMenu menu, Vector2 position)
         {
             if (this.selectedData == null)
-                return null;
+                return;
+
+            Type stateIDType = FindSelectedStateIDType();
+            if (stateIDType == null)
+            {
+                if (!string.IsNullOrWhiteSpace(this.selectedData.StateIDTypeID))
+                {
+                    menu.AppendAction(
+                        "Create State/Missing State ID Type",
+                        null,
+                        DropdownMenuAction.Status.Disabled);
+                    return;
+                }
+
+                menu.AppendAction("Create State", _ => CreateAutomaticState(position));
+                return;
+            }
+
+            bool hasAvailableID = false;
+            Array values = Enum.GetValues(stateIDType);
+            for (int i = 0; i < values.Length; i++)
+            {
+                int stateID = (int)values.GetValue(i);
+                if (this.selectedData.FindState(stateID) != null)
+                    continue;
+
+                string stateName = Enum.GetName(stateIDType, stateID);
+                if (string.IsNullOrWhiteSpace(stateName))
+                    continue;
+
+                hasAvailableID = true;
+                menu.AppendAction(
+                    $"Create State/{stateName} ({stateID})",
+                    _ => CreateBoundState(position, stateID, stateName));
+            }
+
+            if (!hasAvailableID)
+            {
+                menu.AppendAction(
+                    "Create State/No Available IDs",
+                    null,
+                    DropdownMenuAction.Status.Disabled);
+            }
+        }
+
+        private void CreateAutomaticState(Vector2 position)
+        {
+            if (this.selectedData == null)
+                return;
 
             Undo.RecordObject(this.selectedData, "Create FSM State");
-            FSMStateData state = this.selectedData.AddState("New State", position);
+            this.selectedData.AddState("New State", position);
             SaveSelectedData();
+            this.graphView.SetFSMData(this.selectedData);
             UpdateDetailPanel();
-            return state;
+        }
+
+        private void CreateBoundState(Vector2 position, int stateID, string stateName)
+        {
+            if (this.selectedData == null)
+                return;
+
+            Undo.RecordObject(this.selectedData, "Create FSM State");
+            this.selectedData.AddState(stateID, stateName, position);
+            SaveSelectedData();
+            this.graphView.SetFSMData(this.selectedData);
+            UpdateDetailPanel();
+        }
+
+        private void BeginMoveState()
+        {
+            if (this.selectedData != null)
+                Undo.RecordObject(this.selectedData, "Move FSM State");
         }
 
         private void MoveState(FSMStateData state, Vector2 position)
@@ -345,7 +485,6 @@ namespace UnityFramework.FSM.Editor
             if (this.selectedData == null || state == null || state.Position == position)
                 return;
 
-            Undo.RecordObject(this.selectedData, "Move FSM State");
             state.SetPosition(position);
             SaveSelectedData();
         }
@@ -369,9 +508,30 @@ namespace UnityFramework.FSM.Editor
 
             Undo.RecordObject(this.selectedData, "Create FSM Transition");
             FSMTransitionData transition = this.selectedData.AddTransition(fromStateID, toStateID);
+            transition.SetName(GetDefaultTransitionName(fromStateID, toStateID));
             SaveSelectedData();
             UpdateDetailPanel();
             return transition;
+        }
+
+        /// <summary>
+        /// State ID enum이 연결된 경우 숫자 대신 enum 항목으로 기본 전이 이름 생성
+        /// </summary>
+        private string GetDefaultTransitionName(int fromStateID, int toStateID)
+        {
+            Type stateIDType = FindSelectedStateIDType();
+            if (stateIDType != null)
+            {
+                string fromStateName = Enum.GetName(stateIDType, fromStateID);
+                string toStateName = Enum.GetName(stateIDType, toStateID);
+                if (!string.IsNullOrWhiteSpace(fromStateName) &&
+                    !string.IsNullOrWhiteSpace(toStateName))
+                {
+                    return $"{fromStateName} To {toStateName}";
+                }
+            }
+
+            return $"{fromStateID} To {toStateID}";
         }
 
         private void RemoveTransition(FSMTransitionData transition)
@@ -390,38 +550,111 @@ namespace UnityFramework.FSM.Editor
         {
             this.selectedElementData = elementData;
             this.isUpdatingFields = true;
+            try
+            {
+                bool isState = elementData is FSMStateData;
+                bool isTransition = elementData is FSMTransitionData;
+                UpdateSelectionFieldVisibility(isState, isTransition);
 
-            bool isState = elementData is FSMStateData;
-            bool isTransition = elementData is FSMTransitionData;
+                if (elementData is FSMStateData state)
+                    ShowSelectedState(state);
+                else if (elementData is FSMTransitionData transition)
+                    ShowSelectedTransition(transition);
+                else
+                    ShowNoSelection();
+            }
+            finally
+            {
+                this.isUpdatingFields = false;
+            }
+        }
+
+        private void UpdateSelectionFieldVisibility(bool isState, bool isTransition)
+        {
             this.nameField?.SetEnabled(isState || isTransition);
             SetDisplay(this.initialStateToggle, isState);
-            SetDisplay(this.conditionKeyField, isTransition);
+            SetDisplay(this.hasConditionToggle, isTransition);
+            SetDisplay(this.conditionField, isTransition);
             SetDisplay(this.priorityField, isTransition);
+        }
 
-            if (isState)
-            {
-                var state = (FSMStateData)elementData;
-                this.selectionTypeLabel.text = $"State {state.ID}";
-                this.nameField.SetValueWithoutNotify(state.Name);
-                this.initialStateToggle.SetValueWithoutNotify(
-                    this.selectedData != null && this.selectedData.InitialStateID == state.ID);
-            }
-            else if (isTransition)
-            {
-                var transition = (FSMTransitionData)elementData;
-                this.selectionTypeLabel.text =
-                    $"Transition {transition.FromStateID} > {transition.ToStateID}";
-                this.nameField.SetValueWithoutNotify(transition.Name);
-                this.conditionKeyField.SetValueWithoutNotify(transition.ConditionKey);
-                this.priorityField.SetValueWithoutNotify(transition.Priority);
-            }
-            else if (this.selectionTypeLabel != null)
-            {
+        private void ShowSelectedState(FSMStateData state)
+        {
+            this.selectionTypeLabel.text = $"State {state.ID}";
+            this.nameField.SetValueWithoutNotify(state.Name);
+            this.initialStateToggle.SetValueWithoutNotify(
+                this.selectedData != null && this.selectedData.InitialStateID == state.ID);
+            UpdateSelectedTransitionGroup(null);
+        }
+
+        private void ShowSelectedTransition(FSMTransitionData transition)
+        {
+            this.selectionTypeLabel.text =
+                $"Transition {transition.FromStateID} > {transition.ToStateID}";
+            this.nameField.SetValueWithoutNotify(transition.Name);
+            UpdateTransitionConditionFields(transition);
+            this.priorityField.SetValueWithoutNotify(transition.Priority);
+            UpdateSelectedTransitionGroup(transition);
+        }
+
+        private void ShowNoSelection()
+        {
+            if (this.selectionTypeLabel != null)
                 this.selectionTypeLabel.text = "No Selection";
-                this.nameField.SetValueWithoutNotify(string.Empty);
+            this.nameField?.SetValueWithoutNotify(string.Empty);
+            UpdateSelectedTransitionGroup(null);
+        }
+
+        /// <summary>
+        /// 같은 방향으로 연결된 전이들을 목록에 모아 개별 조건을 선택할 수 있게 표시
+        /// </summary>
+        private void UpdateSelectedTransitionGroup(FSMTransitionData selectedTransition)
+        {
+            this.selectedTransitionGroup.Clear();
+            int selectedIndex = -1;
+            if (selectedTransition != null && this.selectedData != null)
+            {
+                IReadOnlyList<FSMTransitionData> transitions = this.selectedData.Transitions;
+                for (int i = 0; i < transitions.Count; i++)
+                {
+                    FSMTransitionData transition = transitions[i];
+                    if (transition.FromStateID == selectedTransition.FromStateID &&
+                        transition.ToStateID == selectedTransition.ToStateID)
+                    {
+                        if (ReferenceEquals(transition, selectedTransition))
+                            selectedIndex = this.selectedTransitionGroup.Count;
+                        this.selectedTransitionGroup.Add(transition);
+                    }
+                }
             }
 
-            this.isUpdatingFields = false;
+            bool showList = this.selectedTransitionGroup.Count > 1;
+            SetDisplay(this.transitionListTitle, showList);
+            SetDisplay(this.transitionList, showList);
+            if (this.transitionList == null)
+                return;
+
+            this.transitionList.style.height = Mathf.Clamp(
+                this.selectedTransitionGroup.Count * 24.0f,
+                48.0f,
+                120.0f);
+            this.transitionList.Rebuild();
+            this.transitionList.selectedIndex = showList ? selectedIndex : -1;
+        }
+
+        private void OnTransitionListSelectionChanged(IEnumerable<object> selectedItems)
+        {
+            if (this.isUpdatingFields)
+                return;
+
+            foreach (object selectedItem in selectedItems)
+            {
+                if (selectedItem is FSMTransitionData transition)
+                {
+                    this.graphView?.SelectTransition(transition);
+                    return;
+                }
+            }
         }
 
         private void OnNameChanged(ChangeEvent<string> changeEvent)
@@ -451,21 +684,384 @@ namespace UnityFramework.FSM.Editor
                 !(this.selectedElementData is FSMStateData state))
                 return;
 
+            SetInitialState(state);
+        }
+
+        private void SetInitialState(FSMStateData state)
+        {
+            if (this.selectedData == null || state == null ||
+                this.selectedData.InitialStateID == state.ID)
+                return;
+
             Undo.RecordObject(this.selectedData, "Set Initial FSM State");
             this.selectedData.SetInitialStateID(state.ID);
             SaveSelectedData();
             this.graphView.RefreshInitialState();
+            UpdateDetailPanel();
         }
 
-        private void OnConditionKeyChanged(ChangeEvent<string> changeEvent)
+        /// <summary>
+        /// 상태 ID의 숫자는 유지하면서 에디터에서 사용할 enum 타입 연결 변경
+        /// </summary>
+        private void OnStateIDTypeChanged(ChangeEvent<string> changeEvent)
+        {
+            if (this.isUpdatingFields || this.selectedData == null)
+                return;
+
+            int selectedIndex = this.stateIDTypeNames.IndexOf(changeEvent.newValue);
+            Type nextStateIDType = selectedIndex > 0
+                ? this.stateIDTypes[selectedIndex - 1]
+                : null;
+            string nextTypeID = FSMStateIDType.GetID(nextStateIDType);
+            if (this.selectedData.StateIDTypeID == nextTypeID)
+                return;
+
+            int undefinedStateID;
+            if (nextStateIDType != null &&
+                TryFindUndefinedStateID(this.selectedData, nextStateIDType, out undefinedStateID))
+            {
+                EditorUtility.DisplayDialog(
+                    "Cannot Bind State ID Type",
+                    $"State ID {undefinedStateID} is not defined in {nextStateIDType.FullName}.",
+                    "OK");
+                UpdateStateIDTypeField();
+                return;
+            }
+
+            Undo.RecordObject(this.selectedData, "Change FSM State ID Type");
+            this.selectedData.SetStateIDType(nextStateIDType);
+            SaveSelectedData();
+            UpdateStateIDTypeField();
+        }
+
+        /// <summary>
+        /// FSMData 전체에서 사용할 조건 enum 타입 변경
+        /// </summary>
+        private void OnConditionTypeChanged(ChangeEvent<string> changeEvent)
+        {
+            if (this.isUpdatingFields || this.selectedData == null)
+                return;
+
+            int selectedIndex = this.conditionTypeNames.IndexOf(changeEvent.newValue);
+            Type nextConditionType = selectedIndex > 0
+                ? this.conditionTypes[selectedIndex - 1]
+                : null;
+            string nextTypeID = FSMConditionType.GetID(nextConditionType);
+            if (this.selectedData.ConditionTypeID == nextTypeID)
+                return;
+
+            if (HasConfiguredCondition(this.selectedData) &&
+                !EditorUtility.DisplayDialog(
+                    "Change Condition Type",
+                    "Changing the condition type clears every transition condition.",
+                    "Change",
+                    "Cancel"))
+            {
+                UpdateConditionTypeField();
+                return;
+            }
+
+            Undo.RecordObject(this.selectedData, "Change FSM Condition Type");
+            this.selectedData.SetConditionType(nextConditionType);
+            SaveSelectedData();
+            UpdateConditionTypeField();
+            SetSelectedElementData(this.selectedElementData);
+        }
+
+        /// <summary>
+        /// 선택한 전이에서 조건 사용 여부 변경
+        /// </summary>
+        private void OnHasConditionChanged(ChangeEvent<bool> changeEvent)
         {
             if (this.isUpdatingFields || this.selectedData == null ||
                 !(this.selectedElementData is FSMTransitionData transition))
                 return;
 
-            Undo.RecordObject(this.selectedData, "Change FSM Condition Key");
-            transition.SetConditionKey(changeEvent.newValue);
+            Type conditionType = FindSelectedConditionType();
+            if (changeEvent.newValue && conditionType == null)
+            {
+                UpdateTransitionConditionFields(transition);
+                return;
+            }
+
+            Undo.RecordObject(this.selectedData, "Change FSM Transition Condition");
+            if (!changeEvent.newValue)
+            {
+                transition.ClearCondition();
+            }
+            else
+            {
+                BuildConditionChoices(conditionType, null);
+                if (this.conditionIDs.Count > 0)
+                    transition.SetCondition(this.conditionIDs[0]);
+            }
+
             SaveSelectedData();
+            UpdateTransitionConditionFields(transition);
+        }
+
+        /// <summary>
+        /// 드롭다운에서 선택한 enum 값을 전이 조건으로 저장
+        /// </summary>
+        private void OnConditionChanged(ChangeEvent<string> changeEvent)
+        {
+            if (this.isUpdatingFields || this.selectedData == null ||
+                !(this.selectedElementData is FSMTransitionData transition))
+                return;
+
+            int selectedIndex = this.conditionNames.IndexOf(changeEvent.newValue);
+            if (selectedIndex < 0 || selectedIndex >= this.conditionIDs.Count)
+                return;
+
+            Undo.RecordObject(this.selectedData, "Change FSM Transition Condition");
+            transition.SetCondition(this.conditionIDs[selectedIndex]);
+            SaveSelectedData();
+            UpdateTransitionConditionFields(transition);
+        }
+
+        /// <summary>
+        /// Attribute로 등록된 State ID enum을 Unity 타입 캐시에서 검색
+        /// </summary>
+        private void RefreshStateIDTypes()
+        {
+            this.stateIDTypes.Clear();
+            foreach (Type stateIDType in TypeCache.GetTypesWithAttribute<FSMStateIDAttribute>())
+            {
+                if (FSMStateIDType.IsValid(stateIDType))
+                    this.stateIDTypes.Add(stateIDType);
+            }
+
+            this.stateIDTypes.Sort((left, right) =>
+                string.Compare(left.FullName, right.FullName, StringComparison.Ordinal));
+            this.stateIDTypeNames.Clear();
+            this.stateIDTypeNames.Add("None");
+
+            for (int i = 0; i < this.stateIDTypes.Count; i++)
+            {
+                Type stateIDType = this.stateIDTypes[i];
+                this.stateIDTypeNames.Add(
+                    $"{stateIDType.FullName} [{stateIDType.Assembly.GetName().Name}]");
+            }
+        }
+
+        /// <summary>
+        /// FSMData에 저장된 타입 ID를 State ID Type 드롭다운에 반영
+        /// </summary>
+        private void UpdateStateIDTypeField()
+        {
+            if (this.stateIDTypeField == null)
+                return;
+
+            bool previousUpdating = this.isUpdatingFields;
+            this.isUpdatingFields = true;
+            this.stateIDTypeField.SetEnabled(this.selectedData != null);
+            var choices = new List<string>(this.stateIDTypeNames);
+            string selectedName = "None";
+
+            if (this.selectedData != null &&
+                !string.IsNullOrWhiteSpace(this.selectedData.StateIDTypeID))
+            {
+                Type stateIDType = FindSelectedStateIDType();
+                if (stateIDType != null)
+                {
+                    int typeIndex = this.stateIDTypes.IndexOf(stateIDType);
+                    selectedName = this.stateIDTypeNames[typeIndex + 1];
+                }
+                else
+                {
+                    selectedName = $"Missing: {this.selectedData.StateIDTypeID}";
+                    choices.Add(selectedName);
+                }
+            }
+
+            this.stateIDTypeField.choices = choices;
+            this.stateIDTypeField.SetValueWithoutNotify(selectedName);
+            this.isUpdatingFields = previousUpdating;
+        }
+
+        private Type FindSelectedStateIDType()
+        {
+            if (this.selectedData == null)
+                return null;
+
+            for (int i = 0; i < this.stateIDTypes.Count; i++)
+            {
+                Type stateIDType = this.stateIDTypes[i];
+                if (FSMStateIDType.GetID(stateIDType) == this.selectedData.StateIDTypeID)
+                    return stateIDType;
+            }
+
+            return null;
+        }
+
+        private static bool TryFindUndefinedStateID(
+            FSMData fsmData,
+            Type stateIDType,
+            out int undefinedStateID)
+        {
+            IReadOnlyList<FSMStateData> states = fsmData.States;
+            for (int i = 0; i < states.Count; i++)
+            {
+                if (!Enum.IsDefined(stateIDType, states[i].ID))
+                {
+                    undefinedStateID = states[i].ID;
+                    return true;
+                }
+            }
+
+            undefinedStateID = 0;
+            return false;
+        }
+
+        /// <summary>
+        /// Attribute로 등록된 조건 enum을 Unity 타입 캐시에서 검색
+        /// </summary>
+        private void RefreshConditionTypes()
+        {
+            this.conditionTypes.Clear();
+            foreach (Type conditionType in TypeCache.GetTypesWithAttribute<FSMConditionAttribute>())
+            {
+                if (FSMConditionType.IsValid(conditionType))
+                    this.conditionTypes.Add(conditionType);
+            }
+
+            this.conditionTypes.Sort((left, right) =>
+                string.Compare(left.FullName, right.FullName, StringComparison.Ordinal));
+            this.conditionTypeNames.Clear();
+            this.conditionTypeNames.Add("None");
+
+            for (int i = 0; i < this.conditionTypes.Count; i++)
+            {
+                Type conditionType = this.conditionTypes[i];
+                this.conditionTypeNames.Add(
+                    $"{conditionType.FullName} [{conditionType.Assembly.GetName().Name}]");
+            }
+        }
+
+        /// <summary>
+        /// FSMData에 저장된 타입 ID를 Condition Type 드롭다운에 반영
+        /// </summary>
+        private void UpdateConditionTypeField()
+        {
+            if (this.conditionTypeField == null)
+                return;
+
+            bool previousUpdating = this.isUpdatingFields;
+            this.isUpdatingFields = true;
+            this.conditionTypeField.SetEnabled(this.selectedData != null);
+            var choices = new List<string>(this.conditionTypeNames);
+            string selectedName = "None";
+
+            if (this.selectedData != null &&
+                !string.IsNullOrWhiteSpace(this.selectedData.ConditionTypeID))
+            {
+                Type conditionType = FindSelectedConditionType();
+                if (conditionType != null)
+                {
+                    int typeIndex = this.conditionTypes.IndexOf(conditionType);
+                    selectedName = this.conditionTypeNames[typeIndex + 1];
+                }
+                else
+                {
+                    selectedName = $"Missing: {this.selectedData.ConditionTypeID}";
+                    choices.Add(selectedName);
+                }
+            }
+
+            this.conditionTypeField.choices = choices;
+            this.conditionTypeField.SetValueWithoutNotify(selectedName);
+            this.isUpdatingFields = previousUpdating;
+        }
+
+        private Type FindSelectedConditionType()
+        {
+            if (this.selectedData == null)
+                return null;
+
+            for (int i = 0; i < this.conditionTypes.Count; i++)
+            {
+                Type conditionType = this.conditionTypes[i];
+                if (FSMConditionType.GetID(conditionType) == this.selectedData.ConditionTypeID)
+                    return conditionType;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 선택한 enum의 이름과 숫자 값을 전이 조건 드롭다운용 목록으로 변환
+        /// </summary>
+        private void BuildConditionChoices(Type conditionType, FSMTransitionData transition)
+        {
+            this.conditionNames.Clear();
+            this.conditionIDs.Clear();
+            if (conditionType == null)
+                return;
+
+            Array values = Enum.GetValues(conditionType);
+            for (int i = 0; i < values.Length; i++)
+            {
+                object enumValue = values.GetValue(i);
+                int conditionID = Convert.ToInt32(enumValue);
+
+                string enumName = Enum.GetName(conditionType, enumValue);
+                if (string.IsNullOrWhiteSpace(enumName))
+                    continue;
+
+                this.conditionNames.Add(enumName);
+                this.conditionIDs.Add(conditionID);
+            }
+
+            if (transition != null && transition.HasCondition &&
+                !this.conditionIDs.Contains(transition.ConditionID))
+            {
+                this.conditionNames.Add($"Missing ({transition.ConditionID})");
+                this.conditionIDs.Add(transition.ConditionID);
+            }
+        }
+
+        /// <summary>
+        /// 선택한 전이의 조건 사용 여부와 enum 값을 상세 패널에 표시
+        /// </summary>
+        private void UpdateTransitionConditionFields(FSMTransitionData transition)
+        {
+            Type conditionType = FindSelectedConditionType();
+            BuildConditionChoices(conditionType, transition);
+
+            this.hasConditionToggle.SetEnabled(conditionType != null || transition.HasCondition);
+            this.hasConditionToggle.SetValueWithoutNotify(transition.HasCondition);
+            this.conditionField.choices = new List<string>(this.conditionNames);
+            this.conditionField.SetEnabled(conditionType != null && transition.HasCondition);
+
+            string selectedName = string.Empty;
+            if (transition.HasCondition)
+            {
+                int conditionIndex = this.conditionIDs.IndexOf(transition.ConditionID);
+                if (conditionIndex >= 0)
+                    selectedName = this.conditionNames[conditionIndex];
+            }
+            else if (conditionType == null)
+            {
+                selectedName = "Select Condition Type";
+            }
+            else if (this.conditionNames.Count > 0)
+            {
+                selectedName = this.conditionNames[0];
+            }
+
+            this.conditionField.SetValueWithoutNotify(selectedName);
+        }
+
+        private static bool HasConfiguredCondition(FSMData fsmData)
+        {
+            IReadOnlyList<FSMTransitionData> transitions = fsmData.Transitions;
+            for (int i = 0; i < transitions.Count; i++)
+            {
+                if (transitions[i] != null && transitions[i].HasCondition)
+                    return true;
+            }
+
+            return false;
         }
 
         private void OnPriorityChanged(ChangeEvent<int> changeEvent)
@@ -495,7 +1091,6 @@ namespace UnityFramework.FSM.Editor
             {
                 this.nextMachineRefreshTime = currentTime + MachineRefreshInterval;
                 RefreshStateMachineList(false);
-                UpdateDetailPanel();
             }
 
             if (this.transitionHighlightEndTime > 0.0d && currentTime >= this.transitionHighlightEndTime)
@@ -520,10 +1115,20 @@ namespace UnityFramework.FSM.Editor
         /// </summary>
         private void OnUndoRedoPerformed()
         {
-            if (this.viewMode != ViewMode.AssetEdit)
+            if (this.viewMode != ViewMode.AssetEdit || this.isUndoRefreshScheduled)
                 return;
 
+            // Undo 이벤트 처리 중 VisualTree를 교체하면 GraphView의 선택/포인터 캡처가 남을 수 있다.
+            this.isUndoRefreshScheduled = true;
+            rootVisualElement.schedule.Execute(RefreshAfterUndo).ExecuteLater(1);
+        }
+
+        private void RefreshAfterUndo()
+        {
+            this.isUndoRefreshScheduled = false;
             this.graphView?.SetFSMData(this.selectedData);
+            UpdateStateIDTypeField();
+            UpdateConditionTypeField();
             SetSelectedElementData(null);
             UpdateDetailPanel();
         }
