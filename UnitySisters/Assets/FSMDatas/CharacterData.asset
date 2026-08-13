@@ -1,0 +1,81 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61b7600652b6cb74cb8321a7eae53cb5, type: 3}
+  m_Name: CharacterData
+  m_EditorClassIdentifier: 
+  initialStateID: 0
+  nextStateID: 1
+  stateIDTypeID: Assembly-CSharp:FSM.CharacterFSMCotnroller+CharacterStateID
+  conditionTypeID: Assembly-CSharp:FSM.CharacterFSMCotnroller+CharacterCondition
+  states:
+  - id: 0
+    name: Idile
+    position: {x: 246, y: -105}
+  - id: 1
+    name: Move
+    position: {x: 445, y: -229}
+  - id: 2
+    name: Jump
+    position: {x: 645, y: -105}
+  - id: 3
+    name: Falling
+    position: {x: 422, y: 44}
+  transitions:
+  - fromStateID: 0
+    toStateID: 3
+    name: 0 To 3
+    hasCondition: 0
+    conditionID: 0
+    priority: 0
+    routePoints: []
+  - fromStateID: 0
+    toStateID: 2
+    name: 0 To 2
+    hasCondition: 0
+    conditionID: 0
+    priority: 0
+    routePoints: []
+  - fromStateID: 1
+    toStateID: 2
+    name: 1 To 2
+    hasCondition: 0
+    conditionID: 0
+    priority: 0
+    routePoints: []
+  - fromStateID: 2
+    toStateID: 3
+    name: 2 To 3
+    hasCondition: 0
+    conditionID: 0
+    priority: 0
+    routePoints: []
+  - fromStateID: 3
+    toStateID: 0
+    name: 3 To 0
+    hasCondition: 0
+    conditionID: 0
+    priority: 0
+    routePoints: []
+  - fromStateID: 0
+    toStateID: 1
+    name: Idile To Move
+    hasCondition: 0
+    conditionID: 0
+    priority: 0
+    routePoints: []
+  - fromStateID: 1
+    toStateID: 0
+    name: Move To Idile
+    hasCondition: 0
+    conditionID: 0
+    priority: 0
+    routePoints: []

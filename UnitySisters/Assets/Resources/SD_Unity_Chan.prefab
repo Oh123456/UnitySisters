@@ -42,6 +42,7 @@ GameObject:
   - component: {fileID: 1097927638287587771}
   - component: {fileID: 2227266558266102254}
   - component: {fileID: 6285240640270899845}
+  - component: {fileID: 8877441911836399548}
   m_Layer: 6
   m_Name: SD_Unity_Chan
   m_TagString: Untagged
@@ -105,11 +106,47 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   controller: {fileID: 2227266558266102254}
   carmeraTarget: {fileID: 8714078016661903998}
-  isMovement: 1
-  moveSpeed: 2
+  characterTarget: {fileID: 0}
   isGravity: 1
   groundCheckDistance: 0.2
   groundCheckOffset: {x: 0, y: 0.25, z: 0}
+  minPitch: -60
+  maxPitch: 20
+  movementController:
+    rid: 6755534979556180040
+  jumpPower: 10
+  isMovement: 1
+  moveSpeed: 2
+  moveRotation: 1
+  characterFSMCotnroller: {fileID: 8877441911836399548}
+  references:
+    version: 2
+    RefIds:
+    - rid: 6755534979556180040
+      type: {class: CharacterMovementController, ns: UnitySisters.Controller, asm: Assembly-CSharp}
+      data:
+        jumpPower: 10
+        isMovement: 1
+        moveSpeed: 2
+        moveRotation: 1
+        isGravity: 1
+        groundCheckDistance: 0.2
+        groundCheckOffset: {x: 0, y: 0.25, z: 0}
+        groundCheckRadius: 0.23
+        characterController: {fileID: 2227266558266102254}
+--- !u!114 &8877441911836399548
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8665634975146125619}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a005a201aa83af48aa63fe067e1a0ad, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  fsmData: {fileID: 11400000, guid: 24e26965e8dca6343aaa8cd301036e87, type: 2}
 --- !u!1001 &453888412758731170
 PrefabInstance:
   m_ObjectHideFlags: 0

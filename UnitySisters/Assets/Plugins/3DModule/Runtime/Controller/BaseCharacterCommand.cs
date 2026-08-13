@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace _3DModule.Controller
+namespace _3DModule.Controller.Command
 {
     public abstract class BaseCharacterCommand
     {

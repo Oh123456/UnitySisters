@@ -2,6 +2,9 @@ using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnitySisters.Command;
+using UnitySisters.Controller;
+using UnitySisters.Model;
 using static UnityEngine.InputSystem.InputAction;
 using PlayerActions = InputSystem_Actions.PlayerActions;
 
@@ -16,10 +19,14 @@ public class PlayerController : _3DModule.Controller.BaseController<CharacterCom
     }
 
     [SerializeField] private CinemachineCamera cinemachineCamera;
+
+    [Header("Camera")]
+    [SerializeField] private CameraControiller cameraControiller = new CameraControiller();
+
     private PlayerActions playerActions;
     private Character currentControlCharacter;
     private bool showMouseCursor = false;
-
+    private CameraCotrolModel cameraCotrolModel;
     private Queue<InputData> inputDatas = new();
 
     private void Reset()
@@ -30,8 +37,8 @@ public class PlayerController : _3DModule.Controller.BaseController<CharacterCom
     protected override void Awake()
     {
         base.Awake();
-        PlayerInputSystem playerInputSystem = InputManager.Instance.GetPlayerInputSystem();
-        playerActions = playerInputSystem.GetInputAction();
+        InitializeInputSystem();
+        InitializeCameraController();
         UpdateMouseCursor();
     }
 
@@ -63,18 +70,32 @@ public class PlayerController : _3DModule.Controller.BaseController<CharacterCom
         characterCommand.isCameraControlAble = !isShowCursor;
         if (!isShowCursor)
         {            
-            characterCommand.moveWorldDirection = new Vector3(forward.x, 0.0f, forward.z);
-            characterCommand.moveWorldRight = cameraTransform.right;
+            characterCommand.movementCommand.moveWorldDirection = new Vector3(forward.x, 0.0f, forward.z);
+            characterCommand.movementCommand.moveWorldRight = cameraTransform.right;
             characterCommand.cameraRotation = playerActions.Look.ReadValue<Vector2>();
         }
 
+        cameraControiller?.ExecuteRotation(characterCommand);
         currentControlCharacter.ExecuteCommand(characterCommand);
         characterCommand.ClearData();
+    }
+
+    private void InitializeInputSystem()
+    {
+        PlayerInputSystem playerInputSystem = InputManager.Instance.GetPlayerInputSystem();
+        playerActions = playerInputSystem.GetInputAction();
+    }
+
+    private void InitializeCameraController()
+    {
+        cameraCotrolModel = new CameraCotrolModel();
+        cameraControiller.SetModel(cameraCotrolModel);
     }
 
     public void ConnectCharacter(Character character)
     {
         currentControlCharacter = character;
+        cameraCotrolModel.carmeraTarget = character.CarmeraTarget;
         cinemachineCamera.Target.TrackingTarget = character.CarmeraTarget;
     }
 
@@ -113,12 +134,12 @@ public class PlayerController : _3DModule.Controller.BaseController<CharacterCom
 
     private void MovePerformed(CallbackContext callbackContext)
     {
-        characterCommand.moveInput = callbackContext.ReadValue<Vector2>();
+        characterCommand.movementCommand.moveInput = callbackContext.ReadValue<Vector2>();
     }
 
     private void MoveCanceled(CallbackContext obj)
     {
-        characterCommand.moveInput = Vector2.zero;
+        characterCommand.movementCommand.moveInput = Vector2.zero;
     }
 
     private void ToggleMouseCursorPerformed(CallbackContext callbackContext)
@@ -128,7 +149,7 @@ public class PlayerController : _3DModule.Controller.BaseController<CharacterCom
     }
     private void JumpPerformed(CallbackContext callbackContext)
     {
-        characterCommand.isJumpButton = true;
+        characterCommand.movementCommand.isJumpButton = true;
     }
 
     private void UpdateMouseCursor()
@@ -153,8 +174,8 @@ public class PlayerController : _3DModule.Controller.BaseController<CharacterCom
         if (characterCommand == null)
             return;
         Gizmos.color = Color.green;
-        Gizmos.DrawLine(cinemachineCamera.transform.position, cinemachineCamera.transform.position + new Vector3(characterCommand.moveWorldDirection.x * 5.0f, 0.0f, 0.0f));
+        Gizmos.DrawLine(cinemachineCamera.transform.position, cinemachineCamera.transform.position + new Vector3(characterCommand.movementCommand.moveWorldDirection.x * 5.0f, 0.0f, 0.0f));
         Gizmos.color = Color.red;
-        Gizmos.DrawLine(cinemachineCamera.transform.position, cinemachineCamera.transform.position + new Vector3(0.0f, 0.0f, characterCommand.moveWorldDirection.z * 5.0f));
+        Gizmos.DrawLine(cinemachineCamera.transform.position, cinemachineCamera.transform.position + new Vector3(0.0f, 0.0f, characterCommand.movementCommand.moveWorldDirection.z * 5.0f));
     }
 }
