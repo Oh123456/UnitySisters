@@ -10,8 +10,15 @@ namespace UnityFramework.FSM
         private readonly FSMData sourceData;
         private readonly Dictionary<int, State> states;
         private readonly List<StateTransition> transitions;
+        private readonly Dictionary<int, List<StateTransition>> outgoingTransitions;
         private readonly ReadOnlyDictionary<int, State> readOnlyStates;
         private readonly ReadOnlyCollection<StateTransition> readOnlyTransitions;
+        private readonly Dictionary<int, int> parameterIndices;
+        private readonly FSMParameterType[] parameterTypes;
+        private readonly bool[] boolParameters;
+        private readonly int[] intParameters;
+        private readonly float[] floatParameters;
+        private readonly IFSMParameterBinder parameterBinder;
 
         private State currentState;
         private int defaultStateID;
@@ -27,23 +34,63 @@ namespace UnityFramework.FSM
         /// </summary>
         /// <param name="owner">상태에서 사용할 소유 객체</param>
         public StateMachine(object owner)
-            : this(owner, null)
+            : this(owner, null, null)
         {
         }
 
         /// <summary>
         /// FSMData에서 생성될 때 원본 정의를 함께 보관하는 내부 생성자
         /// </summary>
-        internal StateMachine(object owner, FSMData sourceData)
+        internal StateMachine(
+            object owner,
+            FSMData sourceData,
+            IReadOnlyList<FSMParameterData> parameters)
         {
             this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
             this.sourceData = sourceData;
+            if (sourceData != null && sourceData.GetUsesFieldParameterBinding())
+            {
+                this.parameterBinder = owner as IFSMParameterBinder;
+                if (this.parameterBinder == null)
+                    throw new InvalidOperationException(
+                        $"FSMData '{sourceData.name}' requires a generated FSM Parameter binder, " +
+                        $"but owner '{owner.GetType().FullName}' does not implement IFSMParameterBinder.");
+            }
             int stateCapacity = sourceData?.States.Count ?? 0;
             int transitionCapacity = sourceData?.Transitions.Count ?? 0;
             this.states = new Dictionary<int, State>(stateCapacity);
             this.transitions = new List<StateTransition>(transitionCapacity);
+            this.outgoingTransitions = new Dictionary<int, List<StateTransition>>(stateCapacity);
             this.readOnlyStates = new ReadOnlyDictionary<int, State>(this.states);
             this.readOnlyTransitions = this.transitions.AsReadOnly();
+
+            int parameterCount = parameters?.Count ?? 0;
+            this.parameterIndices = new Dictionary<int, int>(parameterCount);
+            this.parameterTypes = parameterCount > 0
+                ? new FSMParameterType[parameterCount]
+                : Array.Empty<FSMParameterType>();
+            this.boolParameters = parameterCount > 0
+                ? new bool[parameterCount]
+                : Array.Empty<bool>();
+            this.intParameters = parameterCount > 0
+                ? new int[parameterCount]
+                : Array.Empty<int>();
+            this.floatParameters = parameterCount > 0
+                ? new float[parameterCount]
+                : Array.Empty<float>();
+
+            for (int i = 0; i < parameterCount; i++)
+            {
+                FSMParameterData parameter = parameters[i];
+                if (parameter == null)
+                    throw new InvalidOperationException("FSMData contains a null parameter.");
+
+                this.parameterIndices.Add(parameter.GetID(), i);
+                this.parameterTypes[i] = parameter.GetParameterType();
+                this.boolParameters[i] = parameter.GetDefaultBoolValue();
+                this.intParameters[i] = parameter.GetDefaultIntValue();
+                this.floatParameters[i] = parameter.GetDefaultFloatValue();
+            }
         }
 
         /// <summary>
@@ -95,6 +142,8 @@ namespace UnityFramework.FSM
                 throw new ArgumentException($"A state with ID {state.ID} is already registered.", nameof(state));
 
             states.Add(state.ID, state);
+            if (!this.outgoingTransitions.ContainsKey(state.ID))
+                this.outgoingTransitions.Add(state.ID, new List<StateTransition>());
         }
 
         /// <summary>
@@ -115,6 +164,16 @@ namespace UnityFramework.FSM
                 if (transition.FromStateID == id || transition.ToStateID == id)
                     transitions.RemoveAt(i);
             }
+            this.outgoingTransitions.Remove(id);
+            foreach (List<StateTransition> stateTransitions in this.outgoingTransitions.Values)
+            {
+                for (int i = stateTransitions.Count - 1; i >= 0; i--)
+                {
+                    StateTransition transition = stateTransitions[i];
+                    if (transition.FromStateID == id || transition.ToStateID == id)
+                        stateTransitions.RemoveAt(i);
+                }
+            }
             return true;
         }
 
@@ -130,6 +189,15 @@ namespace UnityFramework.FSM
                 throw new ArgumentNullException(nameof(transition));
 
             transitions.Add(transition);
+            if (!this.outgoingTransitions.TryGetValue(
+                    transition.FromStateID,
+                    out List<StateTransition> stateTransitions))
+            {
+                stateTransitions = new List<StateTransition>();
+                this.outgoingTransitions.Add(transition.FromStateID, stateTransitions);
+            }
+
+            stateTransitions.Add(transition);
         }
 
         /// <summary>
@@ -144,6 +212,7 @@ namespace UnityFramework.FSM
             defaultStateID = initialStateID;
             currentState = states[defaultStateID];
             this.isRunning = true;
+            SyncBoundParameters();
             currentState.Enter(owner);
             FSMDebugRegistry.Register(this);
             StateChanged?.Invoke(new StateChangedEvent(null, currentState.ID, StateChangeReason.Start));
@@ -156,6 +225,8 @@ namespace UnityFramework.FSM
         {
             EnsureRunning();
             currentState.Update(owner);
+            SyncBoundParameters();
+            EvaluateAutomaticTransitions();
         }
 
         /// <summary>
@@ -195,27 +266,13 @@ namespace UnityFramework.FSM
                 return false;
             }
 
-            StateTransition selectedTransition = null;
-            StateTransition highestPriorityCandidate = null;
-            bool transitionExists = false;
+            SyncBoundParameters();
 
-            // 같은 목적지로 향하는 전이 중 조건을 통과하고 우선순위가 가장 높은 전이를 선택한다.
-            for (int i = 0; i < transitions.Count; i++)
-            {
-                StateTransition candidate = transitions[i];
-                if (candidate.FromStateID != currentState.ID || candidate.ToStateID != id)
-                    continue;
-
-                transitionExists = true;
-                if (highestPriorityCandidate == null || candidate.Priority > highestPriorityCandidate.Priority)
-                    highestPriorityCandidate = candidate;
-
-                if (!candidate.Evaluate(this))
-                    continue;
-
-                if (selectedTransition == null || candidate.Priority > selectedTransition.Priority)
-                    selectedTransition = candidate;
-            }
+            StateTransition selectedTransition = FindPassingTransition(
+                id,
+                FSMTransitionMode.Manual,
+                out StateTransition highestPriorityCandidate,
+                out bool transitionExists);
 
             if (selectedTransition == null)
             {
@@ -228,16 +285,85 @@ namespace UnityFramework.FSM
                 return false;
             }
 
-            int previousStateID = currentState.ID;
             result = StateChangeResult.Success;
             RaiseTransitionEvaluated(id, selectedTransition, result);
-
-            currentState.Exit(owner);
-            currentState = states[id];
-            currentState.Enter(owner);
-
-            StateChanged?.Invoke(new StateChangedEvent(previousStateID, id, StateChangeReason.Transition));
+            ApplyTransition(selectedTransition);
             return true;
+        }
+
+        public bool ForceChangeState(int id)
+        {
+            EnsureRunning();
+            if (this.currentState.ID == id || !this.states.ContainsKey(id))
+                return false;
+
+            ApplyStateChange(id, StateChangeReason.Forced);
+            return true;
+        }
+
+        public void SetBool(int parameterID, bool value)
+        {
+            int index = GetBooleanParameterIndex(parameterID);
+            this.boolParameters[index] = value;
+        }
+
+        public bool GetBool(int parameterID)
+        {
+            int index = GetBooleanParameterIndex(parameterID);
+            return this.boolParameters[index];
+        }
+
+        public void SetInt(int parameterID, int value)
+        {
+            int index = GetParameterIndex(parameterID, FSMParameterType.Int);
+            this.intParameters[index] = value;
+        }
+
+        public int GetInt(int parameterID)
+        {
+            int index = GetParameterIndex(parameterID, FSMParameterType.Int);
+            return this.intParameters[index];
+        }
+
+        public void SetFloat(int parameterID, float value)
+        {
+            int index = GetParameterIndex(parameterID, FSMParameterType.Float);
+            this.floatParameters[index] = value;
+        }
+
+        public float GetFloat(int parameterID)
+        {
+            int index = GetParameterIndex(parameterID, FSMParameterType.Float);
+            return this.floatParameters[index];
+        }
+
+        public void SetTrigger(int parameterID)
+        {
+            int index = GetParameterIndex(parameterID, FSMParameterType.Trigger);
+            this.boolParameters[index] = true;
+        }
+
+        public void ResetTrigger(int parameterID)
+        {
+            int index = GetParameterIndex(parameterID, FSMParameterType.Trigger);
+            this.boolParameters[index] = false;
+        }
+
+        internal bool GetBoolByIndex(int parameterIndex) => this.boolParameters[parameterIndex];
+        internal int GetIntByIndex(int parameterIndex) => this.intParameters[parameterIndex];
+        internal float GetFloatByIndex(int parameterIndex) => this.floatParameters[parameterIndex];
+
+        internal void ResetTriggerByIndex(int parameterIndex)
+        {
+            this.boolParameters[parameterIndex] = false;
+        }
+
+        /// <summary>
+        /// 생성 코드가 Owner 필드를 직접 읽어 Parameter 배열에 반영한다.
+        /// </summary>
+        private void SyncBoundParameters()
+        {
+            this.parameterBinder?.SyncFSMParameters(this);
         }
 
         /// <summary>
@@ -252,6 +378,112 @@ namespace UnityFramework.FSM
             currentState = states[defaultStateID];
             currentState.Enter(owner);
             StateChanged?.Invoke(new StateChangedEvent(previousStateID, currentState.ID, StateChangeReason.Reset));
+        }
+
+        /// <summary>
+        /// 현재 상태에서 나가는 자동 전이만 평가하고 한 프레임에 하나의 상태 변경만 허용한다.
+        /// </summary>
+        private void EvaluateAutomaticTransitions()
+        {
+            StateTransition selectedTransition = FindPassingTransition(
+                null,
+                FSMTransitionMode.Automatic,
+                out _,
+                out _);
+            if (selectedTransition == null)
+                return;
+
+            RaiseTransitionEvaluated(
+                selectedTransition.ToStateID,
+                selectedTransition,
+                StateChangeResult.Success);
+            ApplyTransition(selectedTransition);
+        }
+
+        private StateTransition FindPassingTransition(
+            int? targetStateID,
+            FSMTransitionMode mode,
+            out StateTransition highestPriorityCandidate,
+            out bool transitionExists)
+        {
+            StateTransition selectedTransition = null;
+            highestPriorityCandidate = null;
+            transitionExists = false;
+
+            if (!this.outgoingTransitions.TryGetValue(
+                    this.currentState.ID,
+                    out List<StateTransition> stateTransitions))
+                return null;
+
+            // 현재 상태의 전이만 순회하고 조건은 우선순위 선택 전에 AND로 단축 평가한다.
+            for (int i = 0; i < stateTransitions.Count; i++)
+            {
+                StateTransition candidate = stateTransitions[i];
+                if (candidate.GetMode() != mode ||
+                    (targetStateID.HasValue && candidate.ToStateID != targetStateID.Value))
+                    continue;
+
+                transitionExists = true;
+                if (highestPriorityCandidate == null ||
+                    candidate.Priority > highestPriorityCandidate.Priority)
+                    highestPriorityCandidate = candidate;
+
+                if (!candidate.Evaluate(this))
+                    continue;
+
+                if (selectedTransition == null || candidate.Priority > selectedTransition.Priority)
+                    selectedTransition = candidate;
+            }
+
+            return selectedTransition;
+        }
+
+        private void ApplyTransition(StateTransition transition)
+        {
+            transition.ConsumeTriggers(this);
+            ApplyStateChange(transition.ToStateID, StateChangeReason.Transition);
+        }
+
+        private void ApplyStateChange(int targetStateID, StateChangeReason reason)
+        {
+            int previousStateID = this.currentState.ID;
+            this.currentState.Exit(this.owner);
+            this.currentState = this.states[targetStateID];
+            this.currentState.Enter(this.owner);
+            StateChanged?.Invoke(new StateChangedEvent(
+                previousStateID,
+                targetStateID,
+                reason));
+        }
+
+        private int GetBooleanParameterIndex(int parameterID)
+        {
+            if (!this.parameterIndices.TryGetValue(parameterID, out int index))
+                throw new ArgumentException(
+                    $"Parameter ID {parameterID} is not registered.",
+                    nameof(parameterID));
+
+            FSMParameterType actualType = this.parameterTypes[index];
+            if (actualType == FSMParameterType.Bool || actualType == FSMParameterType.Trigger)
+                return index;
+
+            throw new InvalidOperationException(
+                $"Parameter ID {parameterID} is '{actualType}', not Bool or Trigger.");
+        }
+
+        private int GetParameterIndex(int parameterID, FSMParameterType expectedType)
+        {
+            if (!this.parameterIndices.TryGetValue(parameterID, out int index))
+                throw new ArgumentException(
+                    $"Parameter ID {parameterID} is not registered.",
+                    nameof(parameterID));
+
+            FSMParameterType actualType = this.parameterTypes[index];
+            if (actualType == expectedType)
+                return index;
+
+            throw new InvalidOperationException(
+                $"Parameter ID {parameterID} is '{actualType}', not the requested type.");
         }
 
         /// <summary>

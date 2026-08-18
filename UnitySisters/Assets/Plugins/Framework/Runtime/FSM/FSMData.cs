@@ -47,15 +47,19 @@ namespace UnityFramework.FSM
     }
 
     [Serializable]
-    public sealed class FSMTransitionData
+    public sealed class FSMTransitionData : ISerializationCallbackReceiver
     {
         [SerializeField] private int fromStateID;
         [SerializeField] private int toStateID;
         [SerializeField] private string name;
-        [SerializeField] private bool hasCondition;
-        [FormerlySerializedAs("conditionValue")]
-        [SerializeField] private int conditionID;
+        [SerializeField] private FSMTransitionMode mode;
+        [SerializeField] private List<FSMConditionData> conditions = new List<FSMConditionData>();
         [SerializeField] private int priority;
+        [FormerlySerializedAs("hasCondition")]
+        [SerializeField, HideInInspector] private bool legacyHasCondition;
+        [FormerlySerializedAs("conditionValue")]
+        [FormerlySerializedAs("conditionID")]
+        [SerializeField, HideInInspector] private int legacyConditionID;
 #if UNITY_EDITOR
         [SerializeField] private List<Vector2> routePoints = new List<Vector2>();
 #endif
@@ -63,8 +67,8 @@ namespace UnityFramework.FSM
         public int FromStateID => this.fromStateID;
         public int ToStateID => this.toStateID;
         public string Name => this.name;
-        public bool HasCondition => this.hasCondition;
-        public int ConditionID => this.conditionID;
+        public bool HasCondition => this.conditions != null && this.conditions.Count > 0;
+        public int ConditionID => GetFirstCustomConditionID();
         public int Priority => this.priority;
 #if UNITY_EDITOR
         public IReadOnlyList<Vector2> RoutePoints =>
@@ -76,6 +80,18 @@ namespace UnityFramework.FSM
             this.fromStateID = fromStateID;
             this.toStateID = toStateID;
             this.name = $"{fromStateID} To {toStateID}";
+        }
+
+        public FSMTransitionMode GetMode() => this.mode;
+
+        public IReadOnlyList<FSMConditionData> GetConditions()
+        {
+            return this.conditions ?? (IReadOnlyList<FSMConditionData>)Array.Empty<FSMConditionData>();
+        }
+
+        public void SetMode(FSMTransitionMode mode)
+        {
+            this.mode = mode;
         }
 
         /// <summary>
@@ -93,8 +109,9 @@ namespace UnityFramework.FSM
         /// </summary>
         public void SetCondition(int conditionID)
         {
-            this.hasCondition = true;
-            this.conditionID = conditionID;
+            EnsureConditions();
+            this.conditions.Clear();
+            AddCustomCondition(conditionID);
         }
 
         /// <summary>
@@ -102,8 +119,64 @@ namespace UnityFramework.FSM
         /// </summary>
         public void ClearCondition()
         {
-            this.hasCondition = false;
-            this.conditionID = 0;
+            this.conditions?.Clear();
+        }
+
+        /// <summary>
+        /// 지정한 Parameter 값을 비교하는 조건 추가
+        /// </summary>
+        public FSMConditionData AddParameterCondition(int parameterID)
+        {
+            EnsureConditions();
+            var condition = new FSMConditionData(FSMConditionKind.Parameter);
+            condition.SetParameter(parameterID);
+            this.conditions.Add(condition);
+            return condition;
+        }
+
+        /// <summary>
+        /// 게임 코드의 조건 팩토리가 해석할 Custom Condition ID 추가
+        /// </summary>
+        public FSMConditionData AddCustomCondition(int conditionID)
+        {
+            EnsureConditions();
+            var condition = new FSMConditionData(FSMConditionKind.Custom);
+            condition.SetCustomCondition(conditionID);
+            this.conditions.Add(condition);
+            return condition;
+        }
+
+        public bool RemoveCondition(FSMConditionData condition)
+        {
+            return condition != null && this.conditions != null && this.conditions.Remove(condition);
+        }
+
+        public void ClearCustomConditions()
+        {
+            if (this.conditions == null)
+                return;
+
+            for (int i = this.conditions.Count - 1; i >= 0; i--)
+            {
+                FSMConditionData condition = this.conditions[i];
+                if (condition != null && condition.GetConditionKind() == FSMConditionKind.Custom)
+                    this.conditions.RemoveAt(i);
+            }
+        }
+
+        public void RemoveParameterConditions(int parameterID)
+        {
+            if (this.conditions == null)
+                return;
+
+            for (int i = this.conditions.Count - 1; i >= 0; i--)
+            {
+                FSMConditionData condition = this.conditions[i];
+                if (condition != null &&
+                    condition.GetConditionKind() == FSMConditionKind.Parameter &&
+                    condition.GetParameterID() == parameterID)
+                    this.conditions.RemoveAt(i);
+            }
         }
 
         /// <summary>
@@ -165,29 +238,165 @@ namespace UnityFramework.FSM
                 this.routePoints = new List<Vector2>();
         }
 #endif
+
+        public void OnBeforeSerialize()
+        {
+        }
+
+        public void OnAfterDeserialize()
+        {
+            EnsureConditions();
+            // 이전 단일 Condition ID를 새 복수 조건 구조의 Custom Condition 하나로 이관한다.
+            if (this.legacyHasCondition && this.conditions.Count == 0)
+                AddCustomCondition(this.legacyConditionID);
+
+            this.legacyHasCondition = false;
+            this.legacyConditionID = 0;
+        }
+
+        private int GetFirstCustomConditionID()
+        {
+            if (this.conditions == null)
+                return 0;
+
+            for (int i = 0; i < this.conditions.Count; i++)
+            {
+                FSMConditionData condition = this.conditions[i];
+                if (condition != null && condition.GetConditionKind() == FSMConditionKind.Custom)
+                    return condition.GetCustomConditionID();
+            }
+
+            return 0;
+        }
+
+        private void EnsureConditions()
+        {
+            if (this.conditions == null)
+                this.conditions = new List<FSMConditionData>();
+        }
     }
 
     [CreateAssetMenu(fileName = "FSMData", menuName = "FSM/State Machine")]
     public class FSMData : ScriptableObject
     {
         [SerializeField] private int initialStateID;
+        [SerializeField] private bool useFieldParameterBinding;
 #if UNITY_EDITOR
         [SerializeField] private int nextStateID;
+        [SerializeField] private int nextParameterID;
         [SerializeField] private string stateIDTypeID;
         [SerializeField] private string conditionTypeID;
+        [SerializeField] private string parameterSourceTypeID;
 #endif
         [SerializeField] private List<FSMStateData> states = new List<FSMStateData>();
         [SerializeField] private List<FSMTransitionData> transitions = new List<FSMTransitionData>();
+        [SerializeField] private List<FSMParameterData> parameters = new List<FSMParameterData>();
 
         public int InitialStateID => this.initialStateID;
+        public bool GetUsesFieldParameterBinding() => this.useFieldParameterBinding;
 #if UNITY_EDITOR
         public string StateIDTypeID => this.stateIDTypeID;
         public string ConditionTypeID => this.conditionTypeID;
+        public string GetParameterSourceTypeID() => this.parameterSourceTypeID;
 #endif
         public IReadOnlyList<FSMStateData> States => this.states;
         public IReadOnlyList<FSMTransitionData> Transitions => this.transitions;
 
+        public IReadOnlyList<FSMParameterData> GetParameters()
+        {
+            EnsureParameters();
+            return this.parameters;
+        }
+
 #if UNITY_EDITOR
+        /// <summary>
+        /// 에디터에서 새 Parameter를 추가하고 재사용하지 않는 ID 발급
+        /// </summary>
+        public FSMParameterData AddParameter(string name, FSMParameterType type)
+        {
+            EnsureParameters();
+            int parameterID = GetNextParameterID();
+            var parameter = new FSMParameterData(parameterID, name, type);
+            this.parameters.Add(parameter);
+            return parameter;
+        }
+
+        /// <summary>
+        /// enum 등 외부 계약에서 정한 ID로 Parameter 추가
+        /// </summary>
+        public FSMParameterData AddParameter(int parameterID, string name, FSMParameterType type)
+        {
+            EnsureParameters();
+            if (FindParameterRuntime(parameterID) != null)
+                throw new ArgumentException(
+                    $"Parameter ID {parameterID} already exists.",
+                    nameof(parameterID));
+
+            var parameter = new FSMParameterData(parameterID, name, type);
+            this.parameters.Add(parameter);
+            return parameter;
+        }
+
+        /// <summary>
+        /// Parameter와 이를 참조하는 모든 전이 조건을 함께 제거
+        /// </summary>
+        public bool RemoveParameter(FSMParameterData parameter)
+        {
+            EnsureParameters();
+            if (parameter == null || !this.parameters.Remove(parameter))
+                return false;
+
+            int parameterID = parameter.GetID();
+            for (int i = 0; i < this.transitions.Count; i++)
+                this.transitions[i]?.RemoveParameterConditions(parameterID);
+
+            return true;
+        }
+
+        public FSMParameterData FindParameter(int parameterID)
+        {
+            for (int i = 0; i < this.parameters.Count; i++)
+            {
+                FSMParameterData parameter = this.parameters[i];
+                if (parameter != null && parameter.GetID() == parameterID)
+                    return parameter;
+            }
+
+            return null;
+        }
+
+        public FSMParameterData FindBoundParameter(string bindingKey)
+        {
+            if (string.IsNullOrEmpty(bindingKey))
+                return null;
+
+            for (int i = 0; i < this.parameters.Count; i++)
+            {
+                FSMParameterData parameter = this.parameters[i];
+                if (parameter != null && parameter.GetBindingKey() == bindingKey)
+                    return parameter;
+            }
+
+            return null;
+        }
+
+        public int GetBoundParameterCount()
+        {
+            int count = 0;
+            for (int i = 0; i < this.parameters.Count; i++)
+            {
+                if (this.parameters[i] != null && this.parameters[i].GetIsFieldBound())
+                    count++;
+            }
+            return count;
+        }
+
+        public void SetParameterSourceTypeID(string typeID)
+        {
+            this.parameterSourceTypeID = typeID ?? string.Empty;
+            this.useFieldParameterBinding = !string.IsNullOrEmpty(this.parameterSourceTypeID);
+        }
+
         /// <summary>
         /// 새 상태를 추가하고 에셋 내부에서 중복되지 않는 ID를 발급
         /// </summary>
@@ -317,7 +526,11 @@ namespace UnityFramework.FSM
                 throw new ArgumentNullException(nameof(stateFactory));
 
             ValidateDefinition();
-            var stateMachine = new StateMachine(owner, this);
+            EnsureParameters();
+            var stateMachine = new StateMachine(owner, this, this.parameters);
+            Dictionary<int, Func<IStateMachine, bool>> conditionCache = conditionFactory != null
+                ? new Dictionary<int, Func<IStateMachine, bool>>()
+                : null;
 
             // FSMData는 구조만 보관한다. 실제 행동 객체는 게임 코드의 팩토리가 생성해야 한다.
             for (int i = 0; i < this.states.Count; i++)
@@ -336,25 +549,29 @@ namespace UnityFramework.FSM
             for (int i = 0; i < this.transitions.Count; i++)
             {
                 FSMTransitionData transitionData = this.transitions[i];
-                Func<IStateMachine, bool> condition = null;
-
-                if (transitionData.HasCondition)
+                IReadOnlyList<FSMConditionData> conditionDataList = transitionData.GetConditions();
+                StateTransitionCondition[] runtimeConditions = conditionDataList.Count > 0
+                    ? new StateTransitionCondition[conditionDataList.Count]
+                    : null;
+                for (int conditionIndex = 0; conditionIndex < conditionDataList.Count; conditionIndex++)
                 {
-                    if (conditionFactory == null)
+                    FSMConditionData conditionData = conditionDataList[conditionIndex];
+                    if (conditionData == null)
                         throw new InvalidOperationException(
-                            $"Transition '{transitionData.Name}' requires a condition, " +
-                            "but no condition factory was provided.");
+                            $"Transition '{transitionData.Name}' contains a null condition.");
 
-                    condition = conditionFactory.Invoke(transitionData.ConditionID);
-                    if (condition == null)
-                        throw new InvalidOperationException(
-                            $"Condition factory returned null for transition '{transitionData.Name}'.");
+                    runtimeConditions[conditionIndex] = CreateRuntimeCondition(
+                        transitionData,
+                        conditionData,
+                        conditionFactory,
+                        conditionCache);
                 }
 
                 stateMachine.AddTransition(new StateTransition(
                     transitionData.FromStateID,
                     transitionData.ToStateID,
-                    condition,
+                    runtimeConditions,
+                    transitionData.GetMode(),
                     transitionData.Priority,
                     transitionData.Name));
             }
@@ -363,10 +580,55 @@ namespace UnityFramework.FSM
         }
 
         /// <summary>
+        /// 직렬화 조건을 할당 없는 런타임 평가 조건으로 변환하고 Custom delegate를 ID별로 재사용한다.
+        /// </summary>
+        private StateTransitionCondition CreateRuntimeCondition(
+            FSMTransitionData transitionData,
+            FSMConditionData conditionData,
+            Func<int, Func<IStateMachine, bool>> conditionFactory,
+            Dictionary<int, Func<IStateMachine, bool>> conditionCache)
+        {
+            if (conditionData.GetConditionKind() == FSMConditionKind.Parameter)
+            {
+                int parameterIndex = FindParameterIndexRuntime(conditionData.GetParameterID());
+                if (parameterIndex < 0)
+                    throw new InvalidOperationException(
+                        $"Transition '{transitionData.Name}' references unknown parameter ID " +
+                        $"{conditionData.GetParameterID()}.");
+
+                return StateTransitionCondition.CreateParameter(
+                    conditionData,
+                    this.parameters[parameterIndex].GetParameterType(),
+                    parameterIndex);
+            }
+
+            if (conditionFactory == null)
+                throw new InvalidOperationException(
+                    $"Transition '{transitionData.Name}' requires a custom condition, " +
+                    "but no condition factory was provided.");
+
+            int conditionID = conditionData.GetCustomConditionID();
+            if (!conditionCache.TryGetValue(conditionID, out Func<IStateMachine, bool> condition))
+            {
+                condition = conditionFactory.Invoke(conditionID);
+                if (condition == null)
+                    throw new InvalidOperationException(
+                        $"Condition factory returned null for transition '{transitionData.Name}'.");
+
+                conditionCache.Add(conditionID, condition);
+            }
+
+            return StateTransitionCondition.CreateCustom(
+                condition,
+                conditionData.GetCustomExpectedResult());
+        }
+
+        /// <summary>
         /// 실행 전에 중복 ID, 시작 상태와 끊어진 전이를 검사
         /// </summary>
         public void ValidateDefinition()
         {
+            EnsureParameters();
             if (this.states.Count == 0)
                 throw new InvalidOperationException($"FSMData '{this.name}' has no states.");
 
@@ -389,6 +651,22 @@ namespace UnityFramework.FSM
                 throw new InvalidOperationException(
                     $"FSMData '{this.name}' has unknown initial state ID {this.initialStateID}.");
 
+            for (int i = 0; i < this.parameters.Count; i++)
+            {
+                FSMParameterData parameter = this.parameters[i];
+                if (parameter == null)
+                    throw new InvalidOperationException(
+                        $"FSMData '{this.name}' contains a null parameter.");
+
+                for (int duplicateIndex = 0; duplicateIndex < i; duplicateIndex++)
+                {
+                    if (this.parameters[duplicateIndex].GetID() == parameter.GetID())
+                        throw new InvalidOperationException(
+                            $"FSMData '{this.name}' contains duplicate parameter ID " +
+                            $"{parameter.GetID()}.");
+                }
+            }
+
             for (int i = 0; i < this.transitions.Count; i++)
             {
                 FSMTransitionData transition = this.transitions[i];
@@ -397,6 +675,20 @@ namespace UnityFramework.FSM
                 if (!ContainsState(transition.FromStateID) || !ContainsState(transition.ToStateID))
                     throw new InvalidOperationException(
                         $"Transition '{transition.Name}' in FSMData '{this.name}' references an unknown state.");
+
+                IReadOnlyList<FSMConditionData> transitionConditions = transition.GetConditions();
+                for (int conditionIndex = 0; conditionIndex < transitionConditions.Count; conditionIndex++)
+                {
+                    FSMConditionData condition = transitionConditions[conditionIndex];
+                    if (condition == null)
+                        throw new InvalidOperationException(
+                            $"Transition '{transition.Name}' in FSMData '{this.name}' contains a null condition.");
+                    if (condition.GetConditionKind() == FSMConditionKind.Parameter &&
+                        FindParameterRuntime(condition.GetParameterID()) == null)
+                        throw new InvalidOperationException(
+                            $"Transition '{transition.Name}' references unknown parameter ID " +
+                            $"{condition.GetParameterID()}.");
+                }
             }
         }
 
@@ -420,7 +712,7 @@ namespace UnityFramework.FSM
 
             this.conditionTypeID = nextTypeID;
             for (int i = 0; i < this.transitions.Count; i++)
-                this.transitions[i]?.ClearCondition();
+                this.transitions[i]?.ClearCustomConditions();
         }
 
         /// <summary>
@@ -456,7 +748,40 @@ namespace UnityFramework.FSM
 
             return this.nextStateID++;
         }
+
+        private int GetNextParameterID()
+        {
+            while (FindParameterRuntime(this.nextParameterID) != null)
+                this.nextParameterID++;
+
+            return this.nextParameterID++;
+        }
 #endif
+
+        private FSMParameterData FindParameterRuntime(int parameterID)
+        {
+            int parameterIndex = FindParameterIndexRuntime(parameterID);
+            return parameterIndex >= 0 ? this.parameters[parameterIndex] : null;
+        }
+
+        private int FindParameterIndexRuntime(int parameterID)
+        {
+            EnsureParameters();
+            for (int i = 0; i < this.parameters.Count; i++)
+            {
+                FSMParameterData parameter = this.parameters[i];
+                if (parameter != null && parameter.GetID() == parameterID)
+                    return i;
+            }
+
+            return -1;
+        }
+
+        private void EnsureParameters()
+        {
+            if (this.parameters == null)
+                this.parameters = new List<FSMParameterData>();
+        }
 
         private bool ContainsState(int stateID)
         {

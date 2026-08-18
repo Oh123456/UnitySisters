@@ -47,6 +47,23 @@ namespace UnityFramework.FSM
         bool TryChangeState(int id, out StateChangeResult result);
 
         /// <summary>
+        /// 전이 연결과 조건을 무시하고 지정한 상태로 강제 전환
+        /// </summary>
+        bool ForceChangeState(int id);
+
+        /// <summary>
+        /// 타입별 Parameter 값을 변경하거나 조회
+        /// </summary>
+        void SetBool(int parameterID, bool value);
+        bool GetBool(int parameterID);
+        void SetInt(int parameterID, int value);
+        int GetInt(int parameterID);
+        void SetFloat(int parameterID, float value);
+        float GetFloat(int parameterID);
+        void SetTrigger(int parameterID);
+        void ResetTrigger(int parameterID);
+
+        /// <summary>
         /// 상태 머신 소유자 반환
         /// </summary>
         object GetOwner();

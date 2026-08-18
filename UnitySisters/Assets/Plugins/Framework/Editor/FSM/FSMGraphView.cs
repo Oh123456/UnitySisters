@@ -18,6 +18,8 @@ namespace UnityFramework.FSM.Editor
             new Dictionary<int, FSMStateNode>();
         private readonly Dictionary<object, FSMTransitionEdge> transitionEdges =
             new Dictionary<object, FSMTransitionEdge>();
+        private readonly List<FSMStateNode> movingStateNodes = new List<FSMStateNode>();
+        private readonly List<Vector2> movingStatePositions = new List<Vector2>();
 
         private FSMData fsmData;
         private FSMEntryNode entryNode;
@@ -27,6 +29,7 @@ namespace UnityFramework.FSM.Editor
         private bool isDataRefreshScheduled;
         private bool isMoveUpdateScheduled;
         private bool isStateMoveActive;
+        private Vector2 stateMoveStartPosition;
 
         public Action<DropdownMenu, Vector2> CreateStateMenuRequested;
         public Action StateMoveStarted;
@@ -63,7 +66,10 @@ namespace UnityFramework.FSM.Editor
 
             graphViewChanged = OnGraphViewChanged;
             RegisterCallback<MouseDownEvent>(OnMouseDown, TrickleDown.TrickleDown);
-            RegisterCallback<MouseUpEvent>(OnMouseUp);
+            RegisterCallback<MouseMoveEvent>(OnMouseMove, TrickleDown.TrickleDown);
+            // SelectionDragger가 이벤트를 소비하더라도 드래그 종료 상태를 반드시 정리한다.
+            RegisterCallback<MouseUpEvent>(OnMouseUp, TrickleDown.TrickleDown);
+            RegisterCallback<MouseCaptureOutEvent>(OnMouseCaptureOut);
             RegisterCallback<KeyDownEvent>(OnKeyDown);
             RegisterCallback<KeyUpEvent>(OnKeyUp);
         }
@@ -111,7 +117,7 @@ namespace UnityFramework.FSM.Editor
                     transition,
                     transition.FromStateID,
                     transition.ToStateID,
-                    transition.Name,
+                    CreateTransitionTooltip(transition.Name, transition.GetMode()),
                     CalculateCurveOffset(transitions, i),
                     CalculateMarkerTime(transitions, i),
                     true);
@@ -166,7 +172,7 @@ namespace UnityFramework.FSM.Editor
                     null,
                     transition.FromStateID,
                     transition.ToStateID,
-                    transition.Name,
+                    CreateTransitionTooltip(transition.Name, transition.GetMode()),
                     CalculateCurveOffset(transitions, i),
                     CalculateMarkerTime(transitions, i),
                     false);
@@ -213,7 +219,16 @@ namespace UnityFramework.FSM.Editor
 
             if (elementData is FSMTransitionData transition &&
                 this.transitionEdges.TryGetValue(transition, out FSMTransitionEdge edge))
-                edge.SetTransitionName(transition.Name);
+                edge.SetTransitionName(CreateTransitionTooltip(
+                    transition.Name,
+                    transition.GetMode()));
+        }
+
+        private static string CreateTransitionTooltip(
+            string transitionName,
+            FSMTransitionMode mode)
+        {
+            return $"[{mode}] {transitionName}";
         }
 
         public void SelectTransition(FSMTransitionData transition)
@@ -302,12 +317,6 @@ namespace UnityFramework.FSM.Editor
             if (movedElements == null || movedElements.Count == 0)
                 return;
 
-            if (this.isEditable && !this.isStateMoveActive)
-            {
-                this.isStateMoveActive = true;
-                this.StateMoveStarted?.Invoke();
-            }
-
             // GraphViewChange는 노드에 새 좌표가 적용되기 전에 호출될 수 있다.
             // 다음 UI 틱에서 실제 좌표를 읽어 데이터와 연결 표시를 함께 갱신한다.
             ScheduleMovedElementsUpdate();
@@ -315,8 +324,96 @@ namespace UnityFramework.FSM.Editor
 
         private void OnMouseUp(MouseUpEvent mouseEvent)
         {
-            this.isStateMoveActive = false;
+            EndStateMove();
             schedule.Execute(OnSelectionChanged).ExecuteLater(1);
+        }
+
+        private void OnMouseCaptureOut(MouseCaptureOutEvent captureEvent)
+        {
+            EndStateMove();
+        }
+
+        /// <summary>
+        /// GraphView 기본 SelectionDragger의 내부 상태와 무관하게 선택된 상태 노드를 이동
+        /// </summary>
+        private void BeginStateMove(FSMStateNode targetNode, Vector2 mousePosition)
+        {
+            if (!selection.Contains(targetNode))
+            {
+                ClearSelection();
+                AddToSelection(targetNode);
+            }
+
+            this.movingStateNodes.Clear();
+            this.movingStatePositions.Clear();
+            foreach (ISelectable selectedElement in selection)
+            {
+                if (!(selectedElement is FSMStateNode stateNode) ||
+                    (stateNode.capabilities & Capabilities.Movable) == 0)
+                    continue;
+
+                this.movingStateNodes.Add(stateNode);
+                this.movingStatePositions.Add(stateNode.GetPosition().position);
+            }
+
+            if (this.movingStateNodes.Count == 0)
+                return;
+
+            this.stateMoveStartPosition = contentViewContainer.WorldToLocal(mousePosition);
+            this.isStateMoveActive = true;
+            this.CaptureMouse();
+        }
+
+        private void OnMouseMove(MouseMoveEvent mouseEvent)
+        {
+            if (!this.isStateMoveActive)
+                return;
+
+            Vector2 currentPosition = contentViewContainer.WorldToLocal(mouseEvent.mousePosition);
+            Vector2 moveDelta = currentPosition - this.stateMoveStartPosition;
+            for (int i = 0; i < this.movingStateNodes.Count; i++)
+            {
+                FSMStateNode stateNode = this.movingStateNodes[i];
+                Rect position = stateNode.GetPosition();
+                position.position = this.movingStatePositions[i] + moveDelta;
+                stateNode.SetPosition(position);
+            }
+
+            UpdateAllTransitionMarkers();
+            mouseEvent.StopImmediatePropagation();
+        }
+
+        /// <summary>
+        /// 드래그 중에는 시각 요소만 옮기고, 종료 시 최종 좌표만 데이터에 기록한다.
+        /// </summary>
+        private void EndStateMove()
+        {
+            if (!this.isStateMoveActive)
+                return;
+
+            this.isStateMoveActive = false;
+            if (this.HasMouseCapture())
+                this.ReleaseMouse();
+
+            bool hasRecordedUndo = false;
+            for (int i = 0; i < this.movingStateNodes.Count; i++)
+            {
+                FSMStateNode stateNode = this.movingStateNodes[i];
+                FSMStateData stateData = stateNode.GetStateData();
+                Vector2 position = stateNode.GetPosition().position;
+                if (stateData == null || stateData.Position == position)
+                    continue;
+
+                if (this.isEditable && !hasRecordedUndo)
+                {
+                    hasRecordedUndo = true;
+                    this.StateMoveStarted?.Invoke();
+                }
+                this.StateMoved?.Invoke(stateData, position);
+            }
+
+            this.movingStateNodes.Clear();
+            this.movingStatePositions.Clear();
         }
 
         private void OnKeyUp(KeyUpEvent keyEvent)
@@ -341,12 +438,20 @@ namespace UnityFramework.FSM.Editor
         private void ApplyMovedElements()
         {
             this.isMoveUpdateScheduled = false;
+            bool hasRecordedUndo = false;
             foreach (FSMStateNode stateNode in this.stateNodes.Values)
             {
                 FSMStateData stateData = stateNode.GetStateData();
                 Vector2 position = stateNode.GetPosition().position;
-                if (stateData != null && stateData.Position != position)
-                    this.StateMoved?.Invoke(stateData, position);
+                if (stateData == null || stateData.Position == position)
+                    continue;
+
+                if (this.isEditable && !hasRecordedUndo)
+                {
+                    hasRecordedUndo = true;
+                    this.StateMoveStarted?.Invoke();
+                }
+                this.StateMoved?.Invoke(stateData, position);
             }
 
             UpdateAllTransitionMarkers();
@@ -392,13 +497,23 @@ namespace UnityFramework.FSM.Editor
 
         private void OnMouseDown(MouseDownEvent mouseEvent)
         {
-            if (!this.isEditable || this.transitionSourceNode == null || mouseEvent.button != 0)
+            if (mouseEvent.button != 0)
                 return;
 
             VisualElement target = mouseEvent.target as VisualElement;
             FSMStateNode targetNode = target as FSMStateNode ??
                 target?.GetFirstAncestorOfType<FSMStateNode>();
-            if (targetNode == null || targetNode.GetStateData() == null)
+            if (targetNode == null)
+                return;
+
+            if (this.transitionSourceNode == null)
+            {
+                BeginStateMove(targetNode, mouseEvent.mousePosition);
+                mouseEvent.StopImmediatePropagation();
+                return;
+            }
+
+            if (!this.isEditable || targetNode.GetStateData() == null)
                 return;
 
             FSMTransitionData transition = this.TransitionCreated?.Invoke(
@@ -1146,6 +1261,8 @@ namespace UnityFramework.FSM.Editor
                 this.isInitial = isInitial;
                 title = stateName;
                 tooltip = $"State ID: {stateID}";
+                // 상태 노드의 핵심 조작은 Unity GraphView의 기본 capability 값에 의존하지 않는다.
+                capabilities |= Capabilities.Selectable | Capabilities.Movable | Capabilities.Ascendable;
                 capabilities &= ~(Capabilities.Copiable | Capabilities.Renamable);
                 if (!editable)
                     capabilities &= ~Capabilities.Deletable;

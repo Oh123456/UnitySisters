@@ -28,8 +28,14 @@ namespace UnityFramework.FSM.Editor
         private readonly List<string> stateIDTypeNames = new List<string>();
         private readonly List<Type> conditionTypes = new List<Type>();
         private readonly List<string> conditionTypeNames = new List<string>();
+        private readonly List<Type> parameterSourceTypes = new List<Type>();
+        private readonly List<string> parameterSourceTypeNames = new List<string>();
         private readonly List<string> conditionNames = new List<string>();
         private readonly List<int> conditionIDs = new List<int>();
+        private readonly List<FSMParameterData> parameterItems = new List<FSMParameterData>();
+        private readonly List<FSMConditionData> selectedConditions = new List<FSMConditionData>();
+        private readonly List<string> parameterNames = new List<string>();
+        private readonly List<int> parameterIDs = new List<int>();
         private readonly List<FSMTransitionData> selectedTransitionGroup =
             new List<FSMTransitionData>();
 
@@ -45,13 +51,33 @@ namespace UnityFramework.FSM.Editor
         private Label stateCountValueLabel;
         private Label transitionCountValueLabel;
         private VisualElement editPanel;
+        private ScrollView editScroll;
         private Label selectionTypeLabel;
         private DropdownField stateIDTypeField;
         private DropdownField conditionTypeField;
+        private DropdownField parameterSourceTypeField;
         private TextField nameField;
         private Toggle initialStateToggle;
-        private Toggle hasConditionToggle;
-        private DropdownField conditionField;
+        private ListView parameterList;
+        private TextField parameterNameField;
+        private EnumField parameterTypeField;
+        private Toggle parameterBoolDefaultField;
+        private IntegerField parameterIntDefaultField;
+        private FloatField parameterFloatDefaultField;
+        private Button removeParameterButton;
+        private EnumField transitionModeField;
+        private ListView conditionList;
+        private DropdownField conditionParameterField;
+        private EnumField conditionComparisonField;
+        private Toggle conditionBoolValueField;
+        private IntegerField conditionIntValueField;
+        private FloatField conditionFloatValueField;
+        private DropdownField customConditionField;
+        private Toggle customExpectedField;
+        private Button addParameterConditionButton;
+        private Button addCustomConditionButton;
+        private Button removeConditionButton;
+        private Label automaticWarningLabel;
         private IntegerField priorityField;
         private Label transitionListTitle;
         private ListView transitionList;
@@ -60,6 +86,8 @@ namespace UnityFramework.FSM.Editor
         private FSMData selectedData;
         private IStateMachine selectedStateMachine;
         private object selectedElementData;
+        private FSMParameterData selectedParameter;
+        private FSMConditionData selectedCondition;
         private double nextMachineRefreshTime;
         private double transitionHighlightEndTime;
         private bool isUpdatingFields;
@@ -111,6 +139,7 @@ namespace UnityFramework.FSM.Editor
             rootVisualElement.Add(CreateToolbar());
             RefreshStateIDTypes();
             RefreshConditionTypes();
+            RefreshParameterSourceTypes();
 
             var splitView = new TwoPaneSplitView(1, 300.0f, TwoPaneSplitViewOrientation.Horizontal);
             splitView.style.flexGrow = 1.0f;
@@ -206,7 +235,10 @@ namespace UnityFramework.FSM.Editor
             this.transitionCountValueLabel = AddDetailRow(detailPanel, "Transitions");
 
             this.editPanel = CreateEditPanel();
-            detailPanel.Add(this.editPanel);
+            this.editScroll = new ScrollView(ScrollViewMode.Vertical);
+            this.editScroll.AddToClassList("fsm-edit-scroll");
+            this.editScroll.Add(this.editPanel);
+            detailPanel.Add(this.editScroll);
 
             Label historyTitle = new Label("Transition History");
             historyTitle.AddToClassList("fsm-section-title");
@@ -238,10 +270,65 @@ namespace UnityFramework.FSM.Editor
             this.stateIDTypeField.RegisterValueChangedCallback(OnStateIDTypeChanged);
             panel.Add(this.stateIDTypeField);
 
-            this.conditionTypeField = new DropdownField("Condition Type");
+            this.conditionTypeField = new DropdownField("Custom Condition Type");
             this.conditionTypeField.choices = new List<string>(this.conditionTypeNames);
             this.conditionTypeField.RegisterValueChangedCallback(OnConditionTypeChanged);
             panel.Add(this.conditionTypeField);
+
+            this.parameterSourceTypeField = new DropdownField("Parameter Source Type");
+            this.parameterSourceTypeField.choices = new List<string>(this.parameterSourceTypeNames);
+            this.parameterSourceTypeField.RegisterValueChangedCallback(OnParameterSourceTypeChanged);
+            panel.Add(this.parameterSourceTypeField);
+
+            var syncParameterButton = new Button(SyncBoundParameters)
+            {
+                text = "Sync Bound Parameters"
+            };
+            panel.Add(syncParameterButton);
+
+            Label parameterTitle = new Label("Parameters");
+            parameterTitle.AddToClassList("fsm-section-title");
+            panel.Add(parameterTitle);
+
+            var parameterButtons = new VisualElement();
+            parameterButtons.AddToClassList("fsm-inline-controls");
+            var addParameterButton = new Button(ShowAddParameterMenu) { text = "+ Parameter" };
+            parameterButtons.Add(addParameterButton);
+            this.removeParameterButton = new Button(RemoveSelectedParameter) { text = "Remove" };
+            parameterButtons.Add(this.removeParameterButton);
+            panel.Add(parameterButtons);
+
+            this.parameterList = new ListView
+            {
+                itemsSource = this.parameterItems,
+                fixedItemHeight = 24.0f,
+                selectionType = SelectionType.Single,
+                makeItem = CreateParameterItem,
+                bindItem = BindParameterItem
+            };
+            this.parameterList.selectionChanged += OnParameterSelectionChanged;
+            this.parameterList.AddToClassList("fsm-parameter-list");
+            panel.Add(this.parameterList);
+
+            this.parameterNameField = new TextField("Name");
+            this.parameterNameField.RegisterValueChangedCallback(OnParameterNameChanged);
+            panel.Add(this.parameterNameField);
+
+            this.parameterTypeField = new EnumField("Type", FSMParameterType.Bool);
+            this.parameterTypeField.RegisterValueChangedCallback(OnParameterTypeChanged);
+            panel.Add(this.parameterTypeField);
+
+            this.parameterBoolDefaultField = new Toggle("Default");
+            this.parameterBoolDefaultField.RegisterValueChangedCallback(OnParameterBoolDefaultChanged);
+            panel.Add(this.parameterBoolDefaultField);
+
+            this.parameterIntDefaultField = new IntegerField("Default");
+            this.parameterIntDefaultField.RegisterValueChangedCallback(OnParameterIntDefaultChanged);
+            panel.Add(this.parameterIntDefaultField);
+
+            this.parameterFloatDefaultField = new FloatField("Default");
+            this.parameterFloatDefaultField.RegisterValueChangedCallback(OnParameterFloatDefaultChanged);
+            panel.Add(this.parameterFloatDefaultField);
 
             this.selectionTypeLabel = new Label("No Selection");
             this.selectionTypeLabel.AddToClassList("fsm-section-title");
@@ -255,17 +342,72 @@ namespace UnityFramework.FSM.Editor
             this.initialStateToggle.RegisterValueChangedCallback(OnInitialStateChanged);
             panel.Add(this.initialStateToggle);
 
-            this.hasConditionToggle = new Toggle("Has Condition");
-            this.hasConditionToggle.RegisterValueChangedCallback(OnHasConditionChanged);
-            panel.Add(this.hasConditionToggle);
-
-            this.conditionField = new DropdownField("Condition");
-            this.conditionField.RegisterValueChangedCallback(OnConditionChanged);
-            panel.Add(this.conditionField);
+            this.transitionModeField = new EnumField("Mode", FSMTransitionMode.Manual);
+            this.transitionModeField.RegisterValueChangedCallback(OnTransitionModeChanged);
+            panel.Add(this.transitionModeField);
 
             this.priorityField = new IntegerField("Priority");
             this.priorityField.RegisterValueChangedCallback(OnPriorityChanged);
             panel.Add(this.priorityField);
+
+            this.automaticWarningLabel = new Label(
+                "Automatic transition without conditions runs on the next Update.");
+            this.automaticWarningLabel.AddToClassList("fsm-warning-label");
+            panel.Add(this.automaticWarningLabel);
+
+            Label conditionTitle = new Label("Conditions (AND)");
+            conditionTitle.AddToClassList("fsm-section-title");
+            panel.Add(conditionTitle);
+
+            var conditionButtons = new VisualElement();
+            conditionButtons.AddToClassList("fsm-inline-controls");
+            this.addParameterConditionButton = new Button(AddParameterCondition) { text = "+ Parameter" };
+            conditionButtons.Add(this.addParameterConditionButton);
+            this.addCustomConditionButton = new Button(AddCustomCondition) { text = "+ Custom" };
+            conditionButtons.Add(this.addCustomConditionButton);
+            this.removeConditionButton = new Button(RemoveSelectedCondition) { text = "Remove" };
+            conditionButtons.Add(this.removeConditionButton);
+            panel.Add(conditionButtons);
+
+            this.conditionList = new ListView
+            {
+                itemsSource = this.selectedConditions,
+                fixedItemHeight = 24.0f,
+                selectionType = SelectionType.Single,
+                makeItem = CreateConditionItem,
+                bindItem = BindConditionItem
+            };
+            this.conditionList.selectionChanged += OnConditionSelectionChanged;
+            this.conditionList.AddToClassList("fsm-condition-list");
+            panel.Add(this.conditionList);
+
+            this.conditionParameterField = new DropdownField("Parameter");
+            this.conditionParameterField.RegisterValueChangedCallback(OnConditionParameterChanged);
+            panel.Add(this.conditionParameterField);
+
+            this.conditionComparisonField = new EnumField("Comparison", FSMParameterComparison.Equal);
+            this.conditionComparisonField.RegisterValueChangedCallback(OnConditionComparisonChanged);
+            panel.Add(this.conditionComparisonField);
+
+            this.conditionBoolValueField = new Toggle("Value");
+            this.conditionBoolValueField.RegisterValueChangedCallback(OnConditionBoolValueChanged);
+            panel.Add(this.conditionBoolValueField);
+
+            this.conditionIntValueField = new IntegerField("Value");
+            this.conditionIntValueField.RegisterValueChangedCallback(OnConditionIntValueChanged);
+            panel.Add(this.conditionIntValueField);
+
+            this.conditionFloatValueField = new FloatField("Value");
+            this.conditionFloatValueField.RegisterValueChangedCallback(OnConditionFloatValueChanged);
+            panel.Add(this.conditionFloatValueField);
+
+            this.customConditionField = new DropdownField("Custom Condition");
+            this.customConditionField.RegisterValueChangedCallback(OnCustomConditionChanged);
+            panel.Add(this.customConditionField);
+
+            this.customExpectedField = new Toggle("Expected Result");
+            this.customExpectedField.RegisterValueChangedCallback(OnCustomExpectedChanged);
+            panel.Add(this.customExpectedField);
 
             this.transitionListTitle = new Label("Transitions");
             this.transitionListTitle.AddToClassList("fsm-section-title");
@@ -299,9 +441,42 @@ namespace UnityFramework.FSM.Editor
                 return;
 
             FSMTransitionData transition = this.selectedTransitionGroup[index];
+            string modeLabel = transition.GetMode() == FSMTransitionMode.Automatic ? "A" : "M";
             label.text = string.IsNullOrEmpty(transition.Name)
                 ? $"Transition {index + 1}"
-                : transition.Name;
+                : $"[{modeLabel}] {transition.Name}";
+        }
+
+        private static VisualElement CreateParameterItem()
+        {
+            var label = new Label();
+            label.AddToClassList("fsm-list-item");
+            return label;
+        }
+
+        private void BindParameterItem(VisualElement element, int index)
+        {
+            if (!(element is Label label) || index < 0 || index >= this.parameterItems.Count)
+                return;
+
+            FSMParameterData parameter = this.parameterItems[index];
+            string bindingLabel = parameter.GetIsFieldBound() ? "  Bound" : string.Empty;
+            label.text = $"{parameter.GetName()}  [{parameter.GetParameterType()}]{bindingLabel}";
+        }
+
+        private static VisualElement CreateConditionItem()
+        {
+            var label = new Label();
+            label.AddToClassList("fsm-list-item");
+            return label;
+        }
+
+        private void BindConditionItem(VisualElement element, int index)
+        {
+            if (!(element is Label label) || index < 0 || index >= this.selectedConditions.Count)
+                return;
+
+            label.text = CreateConditionLabel(this.selectedConditions[index]);
         }
 
         private static Label AddDetailRow(VisualElement parent, string title)
@@ -345,7 +520,7 @@ namespace UnityFramework.FSM.Editor
             SetDisplay(rootVisualElement.Q<ToolbarButton>(className: "fsm-asset-control"),
                 mode == ViewMode.AssetEdit);
             SetDisplay(this.machineDropdown, mode == ViewMode.LiveDebug);
-            SetDisplay(this.editPanel, mode == ViewMode.AssetEdit);
+            SetDisplay(this.editScroll, mode == ViewMode.AssetEdit);
             SetDisplay(this.historyList, mode == ViewMode.LiveDebug);
 
             if (mode == ViewMode.AssetEdit)
@@ -355,6 +530,8 @@ namespace UnityFramework.FSM.Editor
                 this.graphView?.SetFSMData(this.selectedData);
                 UpdateStateIDTypeField();
                 UpdateConditionTypeField();
+                UpdateParameterSourceTypeField();
+                RefreshParameterList();
             }
             else
             {
@@ -378,6 +555,8 @@ namespace UnityFramework.FSM.Editor
                 this.graphView?.SetFSMData(fsmData);
             UpdateStateIDTypeField();
             UpdateConditionTypeField();
+            UpdateParameterSourceTypeField();
+            RefreshParameterList();
             SetSelectedElementData(null);
             UpdateDetailPanel();
         }
@@ -573,9 +752,14 @@ namespace UnityFramework.FSM.Editor
         {
             this.nameField?.SetEnabled(isState || isTransition);
             SetDisplay(this.initialStateToggle, isState);
-            SetDisplay(this.hasConditionToggle, isTransition);
-            SetDisplay(this.conditionField, isTransition);
+            SetDisplay(this.transitionModeField, isTransition);
             SetDisplay(this.priorityField, isTransition);
+            SetDisplay(this.automaticWarningLabel, false);
+            SetDisplay(this.conditionList, isTransition);
+            SetDisplay(this.addParameterConditionButton, isTransition);
+            SetDisplay(this.addCustomConditionButton, isTransition);
+            SetDisplay(this.removeConditionButton, isTransition);
+            UpdateConditionEditorVisibility(isTransition ? this.selectedCondition : null);
         }
 
         private void ShowSelectedState(FSMStateData state)
@@ -592,8 +776,10 @@ namespace UnityFramework.FSM.Editor
             this.selectionTypeLabel.text =
                 $"Transition {transition.FromStateID} > {transition.ToStateID}";
             this.nameField.SetValueWithoutNotify(transition.Name);
-            UpdateTransitionConditionFields(transition);
+            this.transitionModeField.SetValueWithoutNotify(transition.GetMode());
             this.priorityField.SetValueWithoutNotify(transition.Priority);
+            RefreshConditionList(transition);
+            UpdateAutomaticWarning(transition);
             UpdateSelectedTransitionGroup(transition);
         }
 
@@ -602,6 +788,7 @@ namespace UnityFramework.FSM.Editor
             if (this.selectionTypeLabel != null)
                 this.selectionTypeLabel.text = "No Selection";
             this.nameField?.SetValueWithoutNotify(string.Empty);
+            RefreshConditionList(null);
             UpdateSelectedTransitionGroup(null);
         }
 
@@ -750,10 +937,10 @@ namespace UnityFramework.FSM.Editor
             if (this.selectedData.ConditionTypeID == nextTypeID)
                 return;
 
-            if (HasConfiguredCondition(this.selectedData) &&
+            if (HasConfiguredCustomCondition(this.selectedData) &&
                 !EditorUtility.DisplayDialog(
                     "Change Condition Type",
-                    "Changing the condition type clears every transition condition.",
+                    "Changing the condition type clears every Custom Condition.",
                     "Change",
                     "Cancel"))
             {
@@ -769,54 +956,368 @@ namespace UnityFramework.FSM.Editor
         }
 
         /// <summary>
-        /// 선택한 전이에서 조건 사용 여부 변경
+        /// FSMData가 자동 동기화할 Attribute 필드의 소유 타입 변경
         /// </summary>
-        private void OnHasConditionChanged(ChangeEvent<bool> changeEvent)
+        private void OnParameterSourceTypeChanged(ChangeEvent<string> changeEvent)
         {
-            if (this.isUpdatingFields || this.selectedData == null ||
-                !(this.selectedElementData is FSMTransitionData transition))
+            if (this.isUpdatingFields || this.selectedData == null)
                 return;
 
-            Type conditionType = FindSelectedConditionType();
-            if (changeEvent.newValue && conditionType == null)
+            int selectedIndex = this.parameterSourceTypeNames.IndexOf(changeEvent.newValue);
+            Type nextSourceType = selectedIndex > 0
+                ? this.parameterSourceTypes[selectedIndex - 1]
+                : null;
+            string nextTypeID = FSMParameterBindingGenerator.GetTypeID(nextSourceType);
+            if (this.selectedData.GetParameterSourceTypeID() == nextTypeID)
+                return;
+
+            if (this.selectedData.GetBoundParameterCount() > 0 &&
+                !EditorUtility.DisplayDialog(
+                    "Change Parameter Source",
+                    "Changing the source removes field-bound Parameters that no longer exist " +
+                    "and their transition conditions. Manual Parameters are preserved.",
+                    "Change",
+                    "Cancel"))
             {
-                UpdateTransitionConditionFields(transition);
+                UpdateParameterSourceTypeField();
                 return;
             }
 
-            Undo.RecordObject(this.selectedData, "Change FSM Transition Condition");
-            if (!changeEvent.newValue)
-            {
-                transition.ClearCondition();
-            }
-            else
-            {
-                BuildConditionChoices(conditionType, null);
-                if (this.conditionIDs.Count > 0)
-                    transition.SetCondition(this.conditionIDs[0]);
-            }
-
-            SaveSelectedData();
-            UpdateTransitionConditionFields(transition);
+            ApplyParameterSource(nextSourceType, "Change FSM Parameter Source");
         }
 
-        /// <summary>
-        /// 드롭다운에서 선택한 enum 값을 전이 조건으로 저장
-        /// </summary>
-        private void OnConditionChanged(ChangeEvent<string> changeEvent)
+        private void SyncBoundParameters()
+        {
+            if (this.selectedData == null)
+                return;
+
+            Type sourceType = FindSelectedParameterSourceType();
+            if (sourceType == null)
+            {
+                EditorUtility.DisplayDialog(
+                    "FSM Parameter Binding",
+                    "Select a valid Parameter Source Type first.",
+                    "OK");
+                return;
+            }
+
+            ApplyParameterSource(sourceType, "Sync FSM Bound Parameters");
+        }
+
+        private void ApplyParameterSource(Type sourceType, string undoName)
+        {
+            try
+            {
+                if (sourceType != null)
+                    FSMParameterBindingGenerator.Generate(sourceType);
+                Undo.RecordObject(this.selectedData, undoName);
+                FSMParameterBindingGenerator.SyncData(this.selectedData, sourceType);
+                SaveSelectedData();
+                this.selectedParameter = null;
+                RefreshParameterList();
+                UpdateParameterSourceTypeField();
+                if (this.selectedElementData is FSMTransitionData transition)
+                    RefreshConditionList(transition);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+                EditorUtility.DisplayDialog(
+                    "FSM Parameter Binding Failed",
+                    exception.Message,
+                    "OK");
+                UpdateParameterSourceTypeField();
+            }
+        }
+
+        private void ShowAddParameterMenu()
+        {
+            if (this.selectedData == null)
+                return;
+
+            var menu = new GenericMenu();
+            menu.AddItem(new GUIContent("Bool"), false, () => AddParameter(FSMParameterType.Bool));
+            menu.AddItem(new GUIContent("Int"), false, () => AddParameter(FSMParameterType.Int));
+            menu.AddItem(new GUIContent("Float"), false, () => AddParameter(FSMParameterType.Float));
+            menu.AddItem(new GUIContent("Trigger"), false, () => AddParameter(FSMParameterType.Trigger));
+            menu.ShowAsContext();
+        }
+
+        private void AddParameter(FSMParameterType type)
+        {
+            Undo.RecordObject(this.selectedData, "Add FSM Parameter");
+            this.selectedParameter = this.selectedData.AddParameter(
+                CreateUniqueParameterName(type.ToString()),
+                type);
+            SaveSelectedData();
+            RefreshParameterList();
+        }
+
+        private void RemoveSelectedParameter()
+        {
+            if (this.selectedData == null || this.selectedParameter == null ||
+                this.selectedParameter.GetIsFieldBound())
+                return;
+
+            Undo.RecordObject(this.selectedData, "Remove FSM Parameter");
+            this.selectedData.RemoveParameter(this.selectedParameter);
+            this.selectedParameter = null;
+            SaveSelectedData();
+            RefreshParameterList();
+            if (this.selectedElementData is FSMTransitionData transition)
+                RefreshConditionList(transition);
+        }
+
+        private void OnParameterSelectionChanged(IEnumerable<object> selection)
+        {
+            this.selectedParameter = null;
+            foreach (object item in selection)
+            {
+                this.selectedParameter = item as FSMParameterData;
+                break;
+            }
+
+            UpdateParameterFields();
+        }
+
+        private void OnParameterNameChanged(ChangeEvent<string> changeEvent)
+        {
+            if (this.isUpdatingFields || this.selectedData == null || this.selectedParameter == null ||
+                this.selectedParameter.GetIsFieldBound())
+                return;
+
+            string nextName = changeEvent.newValue?.Trim();
+            if (IsParameterNameUsed(nextName, this.selectedParameter))
+            {
+                UpdateParameterFields();
+                return;
+            }
+
+            Undo.RecordObject(this.selectedData, "Rename FSM Parameter");
+            this.selectedParameter.SetName(nextName);
+            SaveSelectedData();
+            RefreshParameterList();
+            this.conditionList?.RefreshItems();
+        }
+
+        private void OnParameterTypeChanged(ChangeEvent<Enum> changeEvent)
+        {
+            if (this.isUpdatingFields || this.selectedData == null || this.selectedParameter == null ||
+                this.selectedParameter.GetIsFieldBound())
+                return;
+
+            Undo.RecordObject(this.selectedData, "Change FSM Parameter Type");
+            this.selectedParameter.SetParameterType((FSMParameterType)changeEvent.newValue);
+            SaveSelectedData();
+            RefreshParameterList();
+            UpdateParameterFields();
+            UpdateConditionFields();
+        }
+
+        private void OnParameterBoolDefaultChanged(ChangeEvent<bool> changeEvent)
+        {
+            if (this.isUpdatingFields || this.selectedData == null || this.selectedParameter == null)
+                return;
+
+            Undo.RecordObject(this.selectedData, "Change FSM Parameter Default");
+            this.selectedParameter.SetDefaultBoolValue(changeEvent.newValue);
+            SaveSelectedData();
+        }
+
+        private void OnParameterIntDefaultChanged(ChangeEvent<int> changeEvent)
+        {
+            if (this.isUpdatingFields || this.selectedData == null || this.selectedParameter == null)
+                return;
+
+            Undo.RecordObject(this.selectedData, "Change FSM Parameter Default");
+            this.selectedParameter.SetDefaultIntValue(changeEvent.newValue);
+            SaveSelectedData();
+        }
+
+        private void OnParameterFloatDefaultChanged(ChangeEvent<float> changeEvent)
+        {
+            if (this.isUpdatingFields || this.selectedData == null || this.selectedParameter == null)
+                return;
+
+            Undo.RecordObject(this.selectedData, "Change FSM Parameter Default");
+            this.selectedParameter.SetDefaultFloatValue(changeEvent.newValue);
+            SaveSelectedData();
+        }
+
+        private void OnTransitionModeChanged(ChangeEvent<Enum> changeEvent)
         {
             if (this.isUpdatingFields || this.selectedData == null ||
                 !(this.selectedElementData is FSMTransitionData transition))
+                return;
+
+            Undo.RecordObject(this.selectedData, "Change FSM Transition Mode");
+            transition.SetMode((FSMTransitionMode)changeEvent.newValue);
+            SaveSelectedData();
+            this.transitionList?.RefreshItems();
+            this.graphView?.RefreshElementName(transition);
+            UpdateAutomaticWarning(transition);
+        }
+
+        private void AddParameterCondition()
+        {
+            if (this.selectedData == null || this.parameterItems.Count == 0 ||
+                !(this.selectedElementData is FSMTransitionData transition))
+                return;
+
+            Undo.RecordObject(this.selectedData, "Add FSM Parameter Condition");
+            this.selectedCondition = transition.AddParameterCondition(this.parameterItems[0].GetID());
+            if (this.parameterItems[0].GetParameterType() == FSMParameterType.Trigger)
+                this.selectedCondition.SetBoolValue(true);
+            SaveSelectedData();
+            RefreshConditionList(transition);
+        }
+
+        private void AddCustomCondition()
+        {
+            if (this.selectedData == null ||
+                !(this.selectedElementData is FSMTransitionData transition))
+                return;
+
+            BuildConditionChoices(FindSelectedConditionType(), null);
+            if (this.conditionIDs.Count == 0)
+                return;
+
+            Undo.RecordObject(this.selectedData, "Add FSM Custom Condition");
+            this.selectedCondition = transition.AddCustomCondition(this.conditionIDs[0]);
+            SaveSelectedData();
+            RefreshConditionList(transition);
+        }
+
+        private void RemoveSelectedCondition()
+        {
+            if (this.selectedData == null || this.selectedCondition == null ||
+                !(this.selectedElementData is FSMTransitionData transition))
+                return;
+
+            Undo.RecordObject(this.selectedData, "Remove FSM Condition");
+            transition.RemoveCondition(this.selectedCondition);
+            this.selectedCondition = null;
+            SaveSelectedData();
+            RefreshConditionList(transition);
+        }
+
+        private void OnConditionSelectionChanged(IEnumerable<object> selection)
+        {
+            this.selectedCondition = null;
+            foreach (object item in selection)
+            {
+                this.selectedCondition = item as FSMConditionData;
+                break;
+            }
+
+            UpdateConditionFields();
+        }
+
+        private void UpdateAutomaticWarning(FSMTransitionData transition)
+        {
+            SetDisplay(
+                this.automaticWarningLabel,
+                transition != null &&
+                transition.GetMode() == FSMTransitionMode.Automatic &&
+                transition.GetConditions().Count == 0);
+        }
+
+        private void OnConditionParameterChanged(ChangeEvent<string> changeEvent)
+        {
+            if (!CanEditSelectedCondition(FSMConditionKind.Parameter))
+                return;
+
+            int selectedIndex = this.parameterNames.IndexOf(changeEvent.newValue);
+            if (selectedIndex < 0 || selectedIndex >= this.parameterIDs.Count)
+                return;
+
+            Undo.RecordObject(this.selectedData, "Change FSM Condition Parameter");
+            this.selectedCondition.SetParameter(this.parameterIDs[selectedIndex]);
+            SaveSelectedData();
+            UpdateConditionFields();
+            this.conditionList.RefreshItems();
+        }
+
+        private void OnConditionComparisonChanged(ChangeEvent<Enum> changeEvent)
+        {
+            if (!CanEditSelectedCondition(FSMConditionKind.Parameter))
+                return;
+
+            FSMParameterComparison comparison = (FSMParameterComparison)changeEvent.newValue;
+            FSMParameterData parameter = FindConditionParameter(this.selectedCondition);
+            if (parameter != null &&
+                (parameter.GetParameterType() == FSMParameterType.Bool ||
+                 parameter.GetParameterType() == FSMParameterType.Trigger) &&
+                comparison != FSMParameterComparison.Equal &&
+                comparison != FSMParameterComparison.NotEqual)
+            {
+                UpdateConditionFields();
+                return;
+            }
+
+            Undo.RecordObject(this.selectedData, "Change FSM Condition Comparison");
+            this.selectedCondition.SetComparison(comparison);
+            SaveSelectedData();
+            this.conditionList.RefreshItems();
+        }
+
+        private void OnConditionBoolValueChanged(ChangeEvent<bool> changeEvent)
+        {
+            if (!CanEditSelectedCondition(FSMConditionKind.Parameter))
+                return;
+
+            Undo.RecordObject(this.selectedData, "Change FSM Condition Value");
+            this.selectedCondition.SetBoolValue(changeEvent.newValue);
+            SaveSelectedData();
+            this.conditionList.RefreshItems();
+        }
+
+        private void OnConditionIntValueChanged(ChangeEvent<int> changeEvent)
+        {
+            if (!CanEditSelectedCondition(FSMConditionKind.Parameter))
+                return;
+
+            Undo.RecordObject(this.selectedData, "Change FSM Condition Value");
+            this.selectedCondition.SetIntValue(changeEvent.newValue);
+            SaveSelectedData();
+            this.conditionList.RefreshItems();
+        }
+
+        private void OnConditionFloatValueChanged(ChangeEvent<float> changeEvent)
+        {
+            if (!CanEditSelectedCondition(FSMConditionKind.Parameter))
+                return;
+
+            Undo.RecordObject(this.selectedData, "Change FSM Condition Value");
+            this.selectedCondition.SetFloatValue(changeEvent.newValue);
+            SaveSelectedData();
+            this.conditionList.RefreshItems();
+        }
+
+        private void OnCustomConditionChanged(ChangeEvent<string> changeEvent)
+        {
+            if (!CanEditSelectedCondition(FSMConditionKind.Custom))
                 return;
 
             int selectedIndex = this.conditionNames.IndexOf(changeEvent.newValue);
             if (selectedIndex < 0 || selectedIndex >= this.conditionIDs.Count)
                 return;
 
-            Undo.RecordObject(this.selectedData, "Change FSM Transition Condition");
-            transition.SetCondition(this.conditionIDs[selectedIndex]);
+            Undo.RecordObject(this.selectedData, "Change FSM Custom Condition");
+            this.selectedCondition.SetCustomCondition(this.conditionIDs[selectedIndex]);
             SaveSelectedData();
-            UpdateTransitionConditionFields(transition);
+            this.conditionList.RefreshItems();
+        }
+
+        private void OnCustomExpectedChanged(ChangeEvent<bool> changeEvent)
+        {
+            if (!CanEditSelectedCondition(FSMConditionKind.Custom))
+                return;
+
+            Undo.RecordObject(this.selectedData, "Change FSM Custom Condition Result");
+            this.selectedCondition.SetCustomExpectedResult(changeEvent.newValue);
+            SaveSelectedData();
+            this.conditionList.RefreshItems();
         }
 
         /// <summary>
@@ -970,6 +1471,8 @@ namespace UnityFramework.FSM.Editor
 
             this.conditionTypeField.choices = choices;
             this.conditionTypeField.SetValueWithoutNotify(selectedName);
+            BuildConditionChoices(FindSelectedConditionType(), null);
+            this.addCustomConditionButton?.SetEnabled(this.conditionIDs.Count > 0);
             this.isUpdatingFields = previousUpdating;
         }
 
@@ -989,9 +1492,67 @@ namespace UnityFramework.FSM.Editor
         }
 
         /// <summary>
+        /// FSMParameter Attribute가 선언된 필드 소유 타입 목록 갱신
+        /// </summary>
+        private void RefreshParameterSourceTypes()
+        {
+            FSMParameterBindingGenerator.GetSourceTypes(this.parameterSourceTypes);
+            this.parameterSourceTypeNames.Clear();
+            this.parameterSourceTypeNames.Add("None");
+            for (int i = 0; i < this.parameterSourceTypes.Count; i++)
+            {
+                Type sourceType = this.parameterSourceTypes[i];
+                this.parameterSourceTypeNames.Add(
+                    $"{sourceType.FullName} [{sourceType.Assembly.GetName().Name}]");
+            }
+        }
+
+        private void UpdateParameterSourceTypeField()
+        {
+            if (this.parameterSourceTypeField == null)
+                return;
+
+            bool previousUpdating = this.isUpdatingFields;
+            this.isUpdatingFields = true;
+            this.parameterSourceTypeField.SetEnabled(this.selectedData != null);
+            var choices = new List<string>(this.parameterSourceTypeNames);
+            string selectedName = "None";
+
+            if (this.selectedData != null &&
+                !string.IsNullOrWhiteSpace(this.selectedData.GetParameterSourceTypeID()))
+            {
+                Type sourceType = FindSelectedParameterSourceType();
+                if (sourceType != null)
+                {
+                    int typeIndex = this.parameterSourceTypes.IndexOf(sourceType);
+                    selectedName = this.parameterSourceTypeNames[typeIndex + 1];
+                }
+                else
+                {
+                    selectedName = $"Missing: {this.selectedData.GetParameterSourceTypeID()}";
+                    choices.Add(selectedName);
+                }
+            }
+
+            this.parameterSourceTypeField.choices = choices;
+            this.parameterSourceTypeField.SetValueWithoutNotify(selectedName);
+            this.isUpdatingFields = previousUpdating;
+        }
+
+        private Type FindSelectedParameterSourceType()
+        {
+            if (this.selectedData == null)
+                return null;
+
+            return FSMParameterBindingGenerator.FindSourceType(
+                this.selectedData.GetParameterSourceTypeID(),
+                this.parameterSourceTypes);
+        }
+
+        /// <summary>
         /// 선택한 enum의 이름과 숫자 값을 전이 조건 드롭다운용 목록으로 변환
         /// </summary>
-        private void BuildConditionChoices(Type conditionType, FSMTransitionData transition)
+        private void BuildConditionChoices(Type conditionType, FSMConditionData selectedCustomCondition)
         {
             this.conditionNames.Clear();
             this.conditionIDs.Clear();
@@ -1012,53 +1573,314 @@ namespace UnityFramework.FSM.Editor
                 this.conditionIDs.Add(conditionID);
             }
 
-            if (transition != null && transition.HasCondition &&
-                !this.conditionIDs.Contains(transition.ConditionID))
+            if (selectedCustomCondition != null &&
+                selectedCustomCondition.GetConditionKind() == FSMConditionKind.Custom &&
+                !this.conditionIDs.Contains(selectedCustomCondition.GetCustomConditionID()))
             {
-                this.conditionNames.Add($"Missing ({transition.ConditionID})");
-                this.conditionIDs.Add(transition.ConditionID);
+                int missingID = selectedCustomCondition.GetCustomConditionID();
+                this.conditionNames.Add($"Missing ({missingID})");
+                this.conditionIDs.Add(missingID);
             }
         }
 
         /// <summary>
-        /// 선택한 전이의 조건 사용 여부와 enum 값을 상세 패널에 표시
+        /// FSMData의 Parameter 목록과 선택된 기본값을 다시 표시
         /// </summary>
-        private void UpdateTransitionConditionFields(FSMTransitionData transition)
+        private void RefreshParameterList()
         {
-            Type conditionType = FindSelectedConditionType();
-            BuildConditionChoices(conditionType, transition);
+            this.parameterItems.Clear();
+            this.parameterNames.Clear();
+            this.parameterIDs.Clear();
+            int selectedIndex = -1;
+            if (this.selectedData != null)
+            {
+                IReadOnlyList<FSMParameterData> parameters = this.selectedData.GetParameters();
+                for (int i = 0; i < parameters.Count; i++)
+                {
+                    FSMParameterData parameter = parameters[i];
+                    if (parameter == null)
+                        continue;
 
-            this.hasConditionToggle.SetEnabled(conditionType != null || transition.HasCondition);
-            this.hasConditionToggle.SetValueWithoutNotify(transition.HasCondition);
-            this.conditionField.choices = new List<string>(this.conditionNames);
-            this.conditionField.SetEnabled(conditionType != null && transition.HasCondition);
-
-            string selectedName = string.Empty;
-            if (transition.HasCondition)
-            {
-                int conditionIndex = this.conditionIDs.IndexOf(transition.ConditionID);
-                if (conditionIndex >= 0)
-                    selectedName = this.conditionNames[conditionIndex];
-            }
-            else if (conditionType == null)
-            {
-                selectedName = "Select Condition Type";
-            }
-            else if (this.conditionNames.Count > 0)
-            {
-                selectedName = this.conditionNames[0];
+                    if (ReferenceEquals(parameter, this.selectedParameter))
+                        selectedIndex = this.parameterItems.Count;
+                    this.parameterItems.Add(parameter);
+                    this.parameterNames.Add(parameter.GetName());
+                    this.parameterIDs.Add(parameter.GetID());
+                }
             }
 
-            this.conditionField.SetValueWithoutNotify(selectedName);
+            if (selectedIndex < 0)
+            {
+                this.selectedParameter = this.parameterItems.Count > 0 ? this.parameterItems[0] : null;
+                selectedIndex = this.selectedParameter != null ? 0 : -1;
+            }
+
+            this.parameterList?.RefreshItems();
+            if (this.parameterList != null)
+            {
+                if (selectedIndex >= 0)
+                    this.parameterList.SetSelectionWithoutNotify(new[] { selectedIndex });
+                else
+                    this.parameterList.SetSelectionWithoutNotify(Array.Empty<int>());
+            }
+
+            UpdateParameterFields();
+            this.addParameterConditionButton?.SetEnabled(this.parameterItems.Count > 0);
         }
 
-        private static bool HasConfiguredCondition(FSMData fsmData)
+        private void UpdateParameterFields()
+        {
+            bool hasParameter = this.selectedParameter != null;
+            bool canEditDefinition = hasParameter && !this.selectedParameter.GetIsFieldBound();
+            this.parameterNameField?.SetEnabled(canEditDefinition);
+            this.parameterTypeField?.SetEnabled(canEditDefinition);
+            this.removeParameterButton?.SetEnabled(canEditDefinition);
+
+            if (!hasParameter)
+            {
+                this.parameterNameField?.SetValueWithoutNotify(string.Empty);
+                SetDisplay(this.parameterBoolDefaultField, false);
+                SetDisplay(this.parameterIntDefaultField, false);
+                SetDisplay(this.parameterFloatDefaultField, false);
+                return;
+            }
+
+            this.parameterNameField.SetValueWithoutNotify(this.selectedParameter.GetName());
+            this.parameterTypeField.SetValueWithoutNotify(this.selectedParameter.GetParameterType());
+            FSMParameterType type = this.selectedParameter.GetParameterType();
+            SetDisplay(this.parameterBoolDefaultField, type == FSMParameterType.Bool);
+            SetDisplay(this.parameterIntDefaultField, type == FSMParameterType.Int);
+            SetDisplay(this.parameterFloatDefaultField, type == FSMParameterType.Float);
+            this.parameterBoolDefaultField.SetValueWithoutNotify(
+                this.selectedParameter.GetDefaultBoolValue());
+            this.parameterIntDefaultField.SetValueWithoutNotify(
+                this.selectedParameter.GetDefaultIntValue());
+            this.parameterFloatDefaultField.SetValueWithoutNotify(
+                this.selectedParameter.GetDefaultFloatValue());
+            this.parameterBoolDefaultField.SetEnabled(canEditDefinition);
+            this.parameterIntDefaultField.SetEnabled(canEditDefinition);
+            this.parameterFloatDefaultField.SetEnabled(canEditDefinition);
+        }
+
+        private void RefreshConditionList(FSMTransitionData transition)
+        {
+            this.selectedConditions.Clear();
+            int selectedIndex = -1;
+            if (transition != null)
+            {
+                IReadOnlyList<FSMConditionData> conditions = transition.GetConditions();
+                for (int i = 0; i < conditions.Count; i++)
+                {
+                    FSMConditionData condition = conditions[i];
+                    if (condition == null)
+                        continue;
+
+                    if (ReferenceEquals(condition, this.selectedCondition))
+                        selectedIndex = this.selectedConditions.Count;
+                    this.selectedConditions.Add(condition);
+                }
+            }
+
+            if (selectedIndex < 0)
+            {
+                this.selectedCondition = this.selectedConditions.Count > 0
+                    ? this.selectedConditions[0]
+                    : null;
+                selectedIndex = this.selectedCondition != null ? 0 : -1;
+            }
+
+            this.conditionList?.RefreshItems();
+            if (this.conditionList != null)
+            {
+                if (selectedIndex >= 0)
+                    this.conditionList.SetSelectionWithoutNotify(new[] { selectedIndex });
+                else
+                    this.conditionList.SetSelectionWithoutNotify(Array.Empty<int>());
+            }
+
+            UpdateConditionFields();
+            UpdateAutomaticWarning(transition);
+        }
+
+        /// <summary>
+        /// 선택된 조건 종류와 Parameter 타입에 필요한 입력 필드만 노출한다.
+        /// </summary>
+        private void UpdateConditionFields()
+        {
+            UpdateConditionEditorVisibility(this.selectedCondition);
+            this.removeConditionButton?.SetEnabled(this.selectedCondition != null);
+            if (this.selectedCondition == null)
+                return;
+
+            if (this.selectedCondition.GetConditionKind() == FSMConditionKind.Custom)
+            {
+                BuildConditionChoices(FindSelectedConditionType(), this.selectedCondition);
+                this.customConditionField.choices = new List<string>(this.conditionNames);
+                int customIndex = this.conditionIDs.IndexOf(
+                    this.selectedCondition.GetCustomConditionID());
+                this.customConditionField.SetValueWithoutNotify(
+                    customIndex >= 0 ? this.conditionNames[customIndex] : string.Empty);
+                this.customExpectedField.SetValueWithoutNotify(
+                    this.selectedCondition.GetCustomExpectedResult());
+                return;
+            }
+
+            this.conditionParameterField.choices = new List<string>(this.parameterNames);
+            int parameterIndex = this.parameterIDs.IndexOf(this.selectedCondition.GetParameterID());
+            if (parameterIndex < 0)
+            {
+                this.conditionParameterField.choices.Add(
+                    $"Missing ({this.selectedCondition.GetParameterID()})");
+                this.conditionParameterField.SetValueWithoutNotify(
+                    this.conditionParameterField.choices[
+                        this.conditionParameterField.choices.Count - 1]);
+            }
+            else
+            {
+                this.conditionParameterField.SetValueWithoutNotify(this.parameterNames[parameterIndex]);
+            }
+
+            this.conditionComparisonField.SetValueWithoutNotify(
+                this.selectedCondition.GetComparison());
+            this.conditionBoolValueField.SetValueWithoutNotify(this.selectedCondition.GetBoolValue());
+            this.conditionIntValueField.SetValueWithoutNotify(this.selectedCondition.GetIntValue());
+            this.conditionFloatValueField.SetValueWithoutNotify(this.selectedCondition.GetFloatValue());
+            UpdateConditionValueVisibility(FindConditionParameter(this.selectedCondition));
+        }
+
+        private void UpdateConditionEditorVisibility(FSMConditionData condition)
+        {
+            bool isParameter = condition != null &&
+                condition.GetConditionKind() == FSMConditionKind.Parameter;
+            bool isCustom = condition != null &&
+                condition.GetConditionKind() == FSMConditionKind.Custom;
+            SetDisplay(this.conditionParameterField, isParameter);
+            SetDisplay(this.conditionComparisonField, isParameter);
+            SetDisplay(this.customConditionField, isCustom);
+            SetDisplay(this.customExpectedField, isCustom);
+            if (!isParameter)
+                UpdateConditionValueVisibility(null);
+        }
+
+        private void UpdateConditionValueVisibility(FSMParameterData parameter)
+        {
+            FSMParameterType? parameterType = parameter?.GetParameterType();
+            SetDisplay(this.conditionBoolValueField,
+                parameterType == FSMParameterType.Bool || parameterType == FSMParameterType.Trigger);
+            SetDisplay(this.conditionIntValueField, parameterType == FSMParameterType.Int);
+            SetDisplay(this.conditionFloatValueField, parameterType == FSMParameterType.Float);
+        }
+
+        private FSMParameterData FindConditionParameter(FSMConditionData condition)
+        {
+            return this.selectedData != null && condition != null
+                ? this.selectedData.FindParameter(condition.GetParameterID())
+                : null;
+        }
+
+        private bool CanEditSelectedCondition(FSMConditionKind expectedKind)
+        {
+            return !this.isUpdatingFields && this.selectedData != null &&
+                this.selectedCondition != null &&
+                this.selectedCondition.GetConditionKind() == expectedKind;
+        }
+
+        private bool IsParameterNameUsed(string name, FSMParameterData except)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return false;
+
+            for (int i = 0; i < this.parameterItems.Count; i++)
+            {
+                FSMParameterData parameter = this.parameterItems[i];
+                if (!ReferenceEquals(parameter, except) &&
+                    string.Equals(parameter.GetName(), name, StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private string CreateUniqueParameterName(string baseName)
+        {
+            string candidate = baseName;
+            int suffix = 1;
+            while (IsParameterNameUsed(candidate, null))
+                candidate = $"{baseName} {suffix++}";
+
+            return candidate;
+        }
+
+        private string CreateConditionLabel(FSMConditionData condition)
+        {
+            if (condition.GetConditionKind() == FSMConditionKind.Custom)
+            {
+                BuildConditionChoices(FindSelectedConditionType(), condition);
+                int customIndex = this.conditionIDs.IndexOf(condition.GetCustomConditionID());
+                string customName = customIndex >= 0
+                    ? this.conditionNames[customIndex]
+                    : $"Missing ({condition.GetCustomConditionID()})";
+                return $"Custom: {customName} == {condition.GetCustomExpectedResult()}";
+            }
+
+            FSMParameterData parameter = FindConditionParameter(condition);
+            string parameterName = parameter != null
+                ? parameter.GetName()
+                : $"Missing ({condition.GetParameterID()})";
+            return $"{parameterName} {GetComparisonSymbol(condition.GetComparison())} " +
+                GetConditionValueText(condition, parameter);
+        }
+
+        private static string GetComparisonSymbol(FSMParameterComparison comparison)
+        {
+            switch (comparison)
+            {
+                case FSMParameterComparison.Equal: return "==";
+                case FSMParameterComparison.NotEqual: return "!=";
+                case FSMParameterComparison.Greater: return ">";
+                case FSMParameterComparison.Less: return "<";
+                case FSMParameterComparison.GreaterOrEqual: return ">=";
+                case FSMParameterComparison.LessOrEqual: return "<=";
+                default: return "?";
+            }
+        }
+
+        private static string GetConditionValueText(
+            FSMConditionData condition,
+            FSMParameterData parameter)
+        {
+            if (parameter == null)
+                return "?";
+
+            switch (parameter.GetParameterType())
+            {
+                case FSMParameterType.Bool:
+                case FSMParameterType.Trigger:
+                    return condition.GetBoolValue().ToString();
+                case FSMParameterType.Int:
+                    return condition.GetIntValue().ToString();
+                case FSMParameterType.Float:
+                    return condition.GetFloatValue().ToString("0.###");
+                default:
+                    return "?";
+            }
+        }
+
+        private static bool HasConfiguredCustomCondition(FSMData fsmData)
         {
             IReadOnlyList<FSMTransitionData> transitions = fsmData.Transitions;
             for (int i = 0; i < transitions.Count; i++)
             {
-                if (transitions[i] != null && transitions[i].HasCondition)
-                    return true;
+                if (transitions[i] == null)
+                    continue;
+
+                IReadOnlyList<FSMConditionData> conditions = transitions[i].GetConditions();
+                for (int conditionIndex = 0; conditionIndex < conditions.Count; conditionIndex++)
+                {
+                    if (conditions[conditionIndex] != null &&
+                        conditions[conditionIndex].GetConditionKind() == FSMConditionKind.Custom)
+                        return true;
+                }
             }
 
             return false;
@@ -1129,6 +1951,8 @@ namespace UnityFramework.FSM.Editor
             this.graphView?.SetFSMData(this.selectedData);
             UpdateStateIDTypeField();
             UpdateConditionTypeField();
+            UpdateParameterSourceTypeField();
+            RefreshParameterList();
             SetSelectedElementData(null);
             UpdateDetailPanel();
         }
