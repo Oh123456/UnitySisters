@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityFramework.FSM;
 using UnitySisters.Command;
 using UnitySisters.Controller.Interface;
 using UnitySisters.Model;
@@ -9,7 +10,13 @@ namespace UnitySisters.Controller
     [System.Serializable]
     public class MovementController : IModelBinder<MovementModel>
     {
-        [SerializeField] private float jumpPower = 10.0f;
+        private enum JumpState
+        {
+            Standing,
+            Falling,
+        }
+
+        [Header("Movement")]
         [SerializeField] private bool isMovement = true;
         [SerializeField] private float moveSpeed = 2.0f;
         [SerializeField] private bool moveRotation = true;
@@ -20,12 +27,35 @@ namespace UnitySisters.Controller
         [SerializeField] private Vector3 groundCheckOffset = Vector3.zero;
         [SerializeField] private float groundCheckRadius = 0.23f;
 
+        [Header("Jump")]
+        [SerializeField] private int jumpCount = 1;
+        [SerializeField] private float jumpPower = 10.0f;
+        [Tooltip("코요테 타임 : 점프시 낙하중에 일정기간 점프 가능 여유 시간")] 
+        [SerializeField] private float coyoteTime = 0.15f;
+
 
         protected MovementModel movementModel;
+        private StatePattern<JumpState> jumpState;
+        private float currentCoyoteTime = 0.0f;
+        private int currentJumpCount = 0;
+
 
         public bool IsMovement => isMovement;
 
-        protected MovementController() { }
+        /// <summary>
+        /// 생성자 막아서 기본적으로 new 방지
+        /// </summary>
+        protected MovementController() 
+        {
+        }
+
+        public void Initialize()
+        {
+            jumpState = new StatePattern<JumpState>(JumpState.Standing);
+            jumpState.OnStateChanged += OnChangeJunpState;
+            currentJumpCount = jumpCount;
+        }
+
 
         public void SetModel(MovementModel movementModel)
         {
@@ -56,8 +86,14 @@ namespace UnitySisters.Controller
 
             ref Vector3 velocity = ref movementModel.refVelocity;
             velocity.x = moveVelocity.x;
-            velocity.y += movementCommand.isJumpButton ? jumpPower : 0.0f;
             velocity.z = moveVelocity.z;
+
+            if (movementCommand.isJumpButton &&
+                currentJumpCount > 0)
+            {
+                velocity.y += jumpPower;
+                SubtractumpCount();
+            }
 
             if (moveRotation && !moveInput.Equals(Vector2.zero))
             {
@@ -87,8 +123,8 @@ namespace UnitySisters.Controller
                 if (movementModel.isGrounded && velocity.y < 0.0f)
                 {
                     velocity.y = 0.0f;
+                    jumpState.ChangeState(JumpState.Standing);
                 }
-
 
                 movementModel.isGrounded = true;
             }
@@ -96,9 +132,38 @@ namespace UnitySisters.Controller
             {
                 velocity += (Physics.gravity * Time.fixedDeltaTime);
                 movementModel.isGrounded = false;
+                if (jumpState.CurrentState == JumpState.Standing)
+                {
+                    currentCoyoteTime += Time.deltaTime;
+                    if (coyoteTime <= currentCoyoteTime)
+                    {
+                        SubtractumpCount();
+                    }
+                }
             }
         }
 
+        private void SubtractumpCount()
+        {
+            --currentJumpCount;
+            jumpState.ChangeState(JumpState.Falling);
+        }
+
+        private void OnChangeJunpState(JumpState per, JumpState current)
+        {
+            switch (current)
+            {
+                case JumpState.Standing:
+                    currentJumpCount = jumpCount;
+                    break;
+                case JumpState.Falling:
+                    currentCoyoteTime = 0.0f;
+                    break;
+                default:
+                    break;
+            }
+             
+        }
 
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         public void OnDrawGizmos()
