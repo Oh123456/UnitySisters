@@ -34,6 +34,17 @@ namespace UnityFramework.FSM
         void Update();
 
         /// <summary>
+        /// 지정한 경과 시간으로 현재 상태와 지연 전이를 업데이트
+        /// </summary>
+        void Update(float deltaTime);
+
+        /// <summary>
+        /// 현재 대기 중인 전이와 남은 시간 반환
+        /// </summary>
+        StateTransition GetPendingTransition();
+        float GetPendingTransitionRemainingTime();
+
+        /// <summary>
         /// 지정한 상태로 전환 요청
         /// </summary>
         /// <param name="id">전환할 상태 ID</param>

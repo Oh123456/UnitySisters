@@ -11,6 +11,7 @@ namespace UnityFramework.FSM.Editor
         private static readonly Color DefaultEdgeColor = new Color(0.68f, 0.69f, 0.71f);
         private static readonly Color EntryEdgeColor = new Color(0.82f, 0.52f, 0.08f);
         private static readonly Color SuccessEdgeColor = new Color(0.2f, 0.85f, 0.55f);
+        private static readonly Color PendingEdgeColor = new Color(0.95f, 0.68f, 0.18f);
         private static readonly Color FailedEdgeColor = new Color(1.0f, 0.32f, 0.28f);
         private const float ReverseTransitionOffset = 5.0f;
 
@@ -149,7 +150,10 @@ namespace UnityFramework.FSM.Editor
                 State state = states[i];
                 FSMStateData sourceState = sourceData?.FindState(state.ID);
                 bool isInitial = sourceData != null && sourceData.InitialStateID == state.ID;
-                var stateNode = new FSMStateNode(state.ID, state.Name, null, isInitial, false);
+                string stateName = sourceState != null && !string.IsNullOrWhiteSpace(sourceState.Name)
+                    ? sourceState.Name
+                    : state.Name;
+                var stateNode = new FSMStateNode(state.ID, stateName, null, isInitial, false);
                 stateNode.SetPosition(sourceState != null
                     ? new Rect(sourceState.Position, FSMStateNode.NodeSize)
                     : CalculateNodePosition(i, states.Count));
@@ -250,9 +254,12 @@ namespace UnityFramework.FSM.Editor
                 !this.transitionEdges.TryGetValue(transition, out FSMTransitionEdge edge))
                 return;
 
-            SetEdgeColor(edge, result == StateChangeResult.Success
+            Color color = result == StateChangeResult.Success
                 ? SuccessEdgeColor
-                : FailedEdgeColor);
+                : result == StateChangeResult.Pending
+                    ? PendingEdgeColor
+                    : FailedEdgeColor;
+            SetEdgeColor(edge, color);
         }
 
         public void ClearTransitionHighlight()

@@ -55,6 +55,9 @@ namespace UnityFramework.FSM
         [SerializeField] private FSMTransitionMode mode;
         [SerializeField] private List<FSMConditionData> conditions = new List<FSMConditionData>();
         [SerializeField] private int priority;
+        [Min(0.0f)]
+        [SerializeField] private float delay;
+        [SerializeField] private bool cancelWhenConditionFails = true;
         [FormerlySerializedAs("hasCondition")]
         [SerializeField, HideInInspector] private bool legacyHasCondition;
         [FormerlySerializedAs("conditionValue")]
@@ -70,6 +73,8 @@ namespace UnityFramework.FSM
         public bool HasCondition => this.conditions != null && this.conditions.Count > 0;
         public int ConditionID => GetFirstCustomConditionID();
         public int Priority => this.priority;
+        public float Delay => this.delay;
+        public bool CancelWhenConditionFails => this.cancelWhenConditionFails;
 #if UNITY_EDITOR
         public IReadOnlyList<Vector2> RoutePoints =>
             this.routePoints ?? (IReadOnlyList<Vector2>)Array.Empty<Vector2>();
@@ -185,6 +190,22 @@ namespace UnityFramework.FSM
         public void SetPriority(int priority)
         {
             this.priority = priority;
+        }
+
+        /// <summary>
+        /// 조건 통과 후 실제 상태 변경까지 기다릴 시간을 초 단위로 설정
+        /// </summary>
+        public void SetDelay(float delay)
+        {
+            if (float.IsNaN(delay) || float.IsInfinity(delay) || delay < 0.0f)
+                throw new ArgumentOutOfRangeException(nameof(delay));
+
+            this.delay = delay;
+        }
+
+        public void SetCancelWhenConditionFails(bool cancelWhenConditionFails)
+        {
+            this.cancelWhenConditionFails = cancelWhenConditionFails;
         }
 
 #if UNITY_EDITOR
@@ -500,7 +521,18 @@ namespace UnityFramework.FSM
             object owner,
             Func<FSMStateData, State> stateFactory)
         {
-            return CreateStateMachineInternal(owner, stateFactory, null);
+            return CreateStateMachineInternal(owner, null, stateFactory, null);
+        }
+
+        /// <summary>
+        /// 상태 행동의 Owner와 Parameter를 제공하는 객체를 분리해 상태 머신 생성
+        /// </summary>
+        public StateMachine CreateStateMachine(
+            object owner,
+            IFSMParameterBinder parameterBinder,
+            Func<FSMStateData, State> stateFactory)
+        {
+            return CreateStateMachineInternal(owner, parameterBinder, stateFactory, null);
         }
 
         /// <summary>
@@ -514,11 +546,31 @@ namespace UnityFramework.FSM
             if (conditionFactory == null)
                 throw new ArgumentNullException(nameof(conditionFactory));
 
-            return CreateStateMachineInternal(owner, stateFactory, conditionFactory);
+            return CreateStateMachineInternal(owner, null, stateFactory, conditionFactory);
+        }
+
+        /// <summary>
+        /// 별도 Parameter Binder와 Custom Condition 팩토리를 사용해 상태 머신 생성
+        /// </summary>
+        public StateMachine CreateStateMachine(
+            object owner,
+            IFSMParameterBinder parameterBinder,
+            Func<FSMStateData, State> stateFactory,
+            Func<int, Func<IStateMachine, bool>> conditionFactory)
+        {
+            if (conditionFactory == null)
+                throw new ArgumentNullException(nameof(conditionFactory));
+
+            return CreateStateMachineInternal(
+                owner,
+                parameterBinder,
+                stateFactory,
+                conditionFactory);
         }
 
         private StateMachine CreateStateMachineInternal(
             object owner,
+            IFSMParameterBinder parameterBinder,
             Func<FSMStateData, State> stateFactory,
             Func<int, Func<IStateMachine, bool>> conditionFactory)
         {
@@ -527,7 +579,11 @@ namespace UnityFramework.FSM
 
             ValidateDefinition();
             EnsureParameters();
-            var stateMachine = new StateMachine(owner, this, this.parameters);
+            var stateMachine = new StateMachine(
+                owner,
+                this,
+                this.parameters,
+                parameterBinder);
             Dictionary<int, Func<IStateMachine, bool>> conditionCache = conditionFactory != null
                 ? new Dictionary<int, Func<IStateMachine, bool>>()
                 : null;
@@ -573,7 +629,9 @@ namespace UnityFramework.FSM
                     runtimeConditions,
                     transitionData.GetMode(),
                     transitionData.Priority,
-                    transitionData.Name));
+                    transitionData.Name,
+                    transitionData.Delay,
+                    transitionData.CancelWhenConditionFails));
             }
 
             return stateMachine;

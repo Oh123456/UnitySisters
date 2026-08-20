@@ -9,7 +9,10 @@ namespace UnityFramework.FSM
         AlreadyCurrent,
         TargetNotFound,
         TransitionNotFound,
-        ConditionFailed
+        ConditionFailed,
+        Pending,
+        PendingBlocked,
+        PendingCancelled
     }
 
     public enum StateChangeReason
@@ -74,12 +77,16 @@ namespace UnityFramework.FSM
         private readonly string name;
         private readonly int priority;
         private readonly FSMTransitionMode mode;
+        private readonly float delay;
+        private readonly bool cancelWhenConditionFails;
 
         public int FromStateID => this.fromStateID;
         public int ToStateID => this.toStateID;
         public string Name => this.name;
         public int Priority => this.priority;
         public bool HasCondition => this.conditions.Length > 0;
+        public float Delay => this.delay;
+        public bool CancelWhenConditionFails => this.cancelWhenConditionFails;
 
         /// <summary>
         /// 상태 전이에 필요한 출발지, 목적지, 조건과 우선순위 설정
@@ -89,8 +96,11 @@ namespace UnityFramework.FSM
             int toStateID,
             Func<IStateMachine, bool> condition = null,
             int priority = 0,
-            string name = null)
+            string name = null,
+            float delay = 0.0f,
+            bool cancelWhenConditionFails = true)
         {
+            ValidateDelay(delay);
             this.fromStateID = fromStateID;
             this.toStateID = toStateID;
             this.conditions = condition == null
@@ -98,6 +108,8 @@ namespace UnityFramework.FSM
                 : new[] { StateTransitionCondition.CreateCustom(condition, true) };
             this.mode = FSMTransitionMode.Manual;
             this.priority = priority;
+            this.delay = delay;
+            this.cancelWhenConditionFails = cancelWhenConditionFails;
             this.name = string.IsNullOrWhiteSpace(name)
                 ? $"{fromStateID} -> {toStateID}"
                 : name;
@@ -109,13 +121,18 @@ namespace UnityFramework.FSM
             StateTransitionCondition[] conditions,
             FSMTransitionMode mode,
             int priority = 0,
-            string name = null)
+            string name = null,
+            float delay = 0.0f,
+            bool cancelWhenConditionFails = true)
         {
+            ValidateDelay(delay);
             this.fromStateID = fromStateID;
             this.toStateID = toStateID;
             this.conditions = conditions ?? emptyConditions;
             this.mode = mode;
             this.priority = priority;
+            this.delay = delay;
+            this.cancelWhenConditionFails = cancelWhenConditionFails;
             this.name = string.IsNullOrWhiteSpace(name)
                 ? $"{fromStateID} -> {toStateID}"
                 : name;
@@ -123,6 +140,12 @@ namespace UnityFramework.FSM
 
         public FSMTransitionMode GetMode() => this.mode;
         public int GetConditionCount() => this.conditions.Length;
+
+        private static void ValidateDelay(float delay)
+        {
+            if (float.IsNaN(delay) || float.IsInfinity(delay) || delay < 0.0f)
+                throw new ArgumentOutOfRangeException(nameof(delay));
+        }
 
         /// <summary>
         /// 등록된 전이 조건 평가

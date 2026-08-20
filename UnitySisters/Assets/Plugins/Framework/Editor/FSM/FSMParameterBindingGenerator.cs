@@ -45,10 +45,10 @@ namespace UnityFramework.FSM.Editor
             CompilationPipeline.compilationFinished += OnCompilationFinished;
         }
 
-        [MenuItem("Tools/FSM/Generate Parameter Bindings")]
+        [MenuItem("Tools/FSM/Generate Parameter Bindings", false, 20)]
         private static void GenerateAll()
         {
-            GenerateAllAndCleanup();
+            FSMParameterSourceGenerator.GenerateAll();
         }
 
         private static void OnCompilationFinished(object context)
@@ -212,7 +212,7 @@ namespace UnityFramework.FSM.Editor
                 return;
 
             File.WriteAllText(generatedPath, generatedSource, new UTF8Encoding(false));
-            AssetDatabase.ImportAsset(generatedPath, ImportAssetOptions.ForceUpdate);
+            FSMParameterSourceGenerator.ScheduleAssetRefresh();
         }
 
         public static void GetBindings(Type sourceType, List<FSMParameterFieldBinding> results)

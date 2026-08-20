@@ -48,6 +48,7 @@ namespace UnityFramework.FSM.Editor
         private Label ownerValueLabel;
         private Label runningValueLabel;
         private Label currentStateValueLabel;
+        private Label pendingTransitionValueLabel;
         private Label stateCountValueLabel;
         private Label transitionCountValueLabel;
         private VisualElement editPanel;
@@ -79,6 +80,8 @@ namespace UnityFramework.FSM.Editor
         private Button removeConditionButton;
         private Label automaticWarningLabel;
         private IntegerField priorityField;
+        private FloatField transitionDelayField;
+        private Toggle cancelWhenConditionFailsToggle;
         private Label transitionListTitle;
         private ListView transitionList;
         private ListView historyList;
@@ -92,8 +95,9 @@ namespace UnityFramework.FSM.Editor
         private double transitionHighlightEndTime;
         private bool isUpdatingFields;
         private bool isUndoRefreshScheduled;
+        private bool isAssetRefreshScheduled;
 
-        [MenuItem("Tools/FSM/Editor")]
+        [MenuItem("Tools/FSM/Editor", false, 0)]
         public static void OpenWindow()
         {
             FSMEditorWindow window = GetWindow<FSMEditorWindow>();
@@ -231,6 +235,7 @@ namespace UnityFramework.FSM.Editor
             this.ownerValueLabel = AddDetailRow(detailPanel, "Source");
             this.runningValueLabel = AddDetailRow(detailPanel, "Running");
             this.currentStateValueLabel = AddDetailRow(detailPanel, "Current State");
+            this.pendingTransitionValueLabel = AddDetailRow(detailPanel, "Pending");
             this.stateCountValueLabel = AddDetailRow(detailPanel, "States");
             this.transitionCountValueLabel = AddDetailRow(detailPanel, "Transitions");
 
@@ -343,12 +348,29 @@ namespace UnityFramework.FSM.Editor
             panel.Add(this.initialStateToggle);
 
             this.transitionModeField = new EnumField("Mode", FSMTransitionMode.Manual);
+            this.transitionModeField.tooltip =
+                "Manual은 코드에서 전환을 요청할 때 검사하고, Automatic은 매 프레임 조건을 검사합니다.";
             this.transitionModeField.RegisterValueChangedCallback(OnTransitionModeChanged);
             panel.Add(this.transitionModeField);
 
             this.priorityField = new IntegerField("Priority");
+            this.priorityField.tooltip =
+                "여러 전이가 동시에 가능할 때 높은 값이 우선합니다. Pending 중에는 더 높은 값만 현재 전이를 중단할 수 있습니다.";
             this.priorityField.RegisterValueChangedCallback(OnPriorityChanged);
             panel.Add(this.priorityField);
+
+            this.transitionDelayField = new FloatField("Delay (Seconds)");
+            this.transitionDelayField.tooltip =
+                "조건 통과 후 실제 상태 변경까지 기다리는 시간입니다. 0이면 기존처럼 즉시 전환합니다.";
+            this.transitionDelayField.RegisterValueChangedCallback(OnTransitionDelayChanged);
+            panel.Add(this.transitionDelayField);
+
+            this.cancelWhenConditionFailsToggle = new Toggle("Cancel When Condition Fails");
+            this.cancelWhenConditionFailsToggle.tooltip =
+                "켜면 Pending 중 조건이 거짓이 될 때 전이를 취소합니다. 끄면 처음 통과한 전이는 Delay가 끝날 때까지 유지됩니다.";
+            this.cancelWhenConditionFailsToggle.RegisterValueChangedCallback(
+                OnCancelWhenConditionFailsChanged);
+            panel.Add(this.cancelWhenConditionFailsToggle);
 
             this.automaticWarningLabel = new Label(
                 "Automatic transition without conditions runs on the next Update.");
@@ -356,16 +378,23 @@ namespace UnityFramework.FSM.Editor
             panel.Add(this.automaticWarningLabel);
 
             Label conditionTitle = new Label("Conditions (AND)");
+            conditionTitle.tooltip =
+                "등록된 조건을 위에서부터 AND로 검사하며, 모든 조건이 참일 때 전이가 가능합니다.";
             conditionTitle.AddToClassList("fsm-section-title");
             panel.Add(conditionTitle);
 
             var conditionButtons = new VisualElement();
             conditionButtons.AddToClassList("fsm-inline-controls");
             this.addParameterConditionButton = new Button(AddParameterCondition) { text = "+ Parameter" };
+            this.addParameterConditionButton.tooltip =
+                "FSM Parameter 값을 비교하는 조건을 추가합니다.";
             conditionButtons.Add(this.addParameterConditionButton);
             this.addCustomConditionButton = new Button(AddCustomCondition) { text = "+ Custom" };
+            this.addCustomConditionButton.tooltip =
+                "게임 코드에서 제공하는 Custom Condition 함수 조건을 추가합니다.";
             conditionButtons.Add(this.addCustomConditionButton);
             this.removeConditionButton = new Button(RemoveSelectedCondition) { text = "Remove" };
+            this.removeConditionButton.tooltip = "선택한 전이 조건을 제거합니다.";
             conditionButtons.Add(this.removeConditionButton);
             panel.Add(conditionButtons);
 
@@ -382,30 +411,41 @@ namespace UnityFramework.FSM.Editor
             panel.Add(this.conditionList);
 
             this.conditionParameterField = new DropdownField("Parameter");
+            this.conditionParameterField.tooltip =
+                "이 조건에서 검사할 FSM Parameter를 선택합니다.";
             this.conditionParameterField.RegisterValueChangedCallback(OnConditionParameterChanged);
             panel.Add(this.conditionParameterField);
 
             this.conditionComparisonField = new EnumField("Comparison", FSMParameterComparison.Equal);
+            this.conditionComparisonField.tooltip =
+                "현재 Parameter 값과 아래 비교값을 어떤 방식으로 비교할지 선택합니다.";
             this.conditionComparisonField.RegisterValueChangedCallback(OnConditionComparisonChanged);
             panel.Add(this.conditionComparisonField);
 
             this.conditionBoolValueField = new Toggle("Value");
+            this.conditionBoolValueField.tooltip = "전이가 통과할 때 필요한 bool 값을 설정합니다.";
             this.conditionBoolValueField.RegisterValueChangedCallback(OnConditionBoolValueChanged);
             panel.Add(this.conditionBoolValueField);
 
             this.conditionIntValueField = new IntegerField("Value");
+            this.conditionIntValueField.tooltip = "전이가 통과할 때 비교할 int 값을 설정합니다.";
             this.conditionIntValueField.RegisterValueChangedCallback(OnConditionIntValueChanged);
             panel.Add(this.conditionIntValueField);
 
             this.conditionFloatValueField = new FloatField("Value");
+            this.conditionFloatValueField.tooltip = "전이가 통과할 때 비교할 float 값을 설정합니다.";
             this.conditionFloatValueField.RegisterValueChangedCallback(OnConditionFloatValueChanged);
             panel.Add(this.conditionFloatValueField);
 
             this.customConditionField = new DropdownField("Custom Condition");
+            this.customConditionField.tooltip =
+                "게임 코드의 Condition Factory에서 평가할 조건 함수를 선택합니다.";
             this.customConditionField.RegisterValueChangedCallback(OnCustomConditionChanged);
             panel.Add(this.customConditionField);
 
             this.customExpectedField = new Toggle("Expected Result");
+            this.customExpectedField.tooltip =
+                "Custom Condition 반환값이 이 값과 같을 때 조건을 통과합니다.";
             this.customExpectedField.RegisterValueChangedCallback(OnCustomExpectedChanged);
             panel.Add(this.customExpectedField);
 
@@ -527,11 +567,8 @@ namespace UnityFramework.FSM.Editor
             {
                 SetSelectedStateMachine(null);
                 this.dataField?.SetValueWithoutNotify(this.selectedData);
-                this.graphView?.SetFSMData(this.selectedData);
-                UpdateStateIDTypeField();
-                UpdateConditionTypeField();
-                UpdateParameterSourceTypeField();
-                RefreshParameterList();
+                RefreshAssetView();
+                ScheduleAssetViewRefresh();
             }
             else
             {
@@ -552,13 +589,11 @@ namespace UnityFramework.FSM.Editor
             this.selectedData = fsmData;
             this.dataField?.SetValueWithoutNotify(fsmData);
             if (this.viewMode == ViewMode.AssetEdit)
-                this.graphView?.SetFSMData(fsmData);
-            UpdateStateIDTypeField();
-            UpdateConditionTypeField();
-            UpdateParameterSourceTypeField();
-            RefreshParameterList();
-            SetSelectedElementData(null);
-            UpdateDetailPanel();
+            {
+                RefreshAssetView();
+                // ObjectField 이벤트 처리가 끝난 뒤 GraphView 조작 상태를 한 번 더 확정한다.
+                ScheduleAssetViewRefresh();
+            }
         }
 
         private void CreateFSMDataAsset()
@@ -754,6 +789,8 @@ namespace UnityFramework.FSM.Editor
             SetDisplay(this.initialStateToggle, isState);
             SetDisplay(this.transitionModeField, isTransition);
             SetDisplay(this.priorityField, isTransition);
+            SetDisplay(this.transitionDelayField, isTransition);
+            SetDisplay(this.cancelWhenConditionFailsToggle, isTransition);
             SetDisplay(this.automaticWarningLabel, false);
             SetDisplay(this.conditionList, isTransition);
             SetDisplay(this.addParameterConditionButton, isTransition);
@@ -778,6 +815,9 @@ namespace UnityFramework.FSM.Editor
             this.nameField.SetValueWithoutNotify(transition.Name);
             this.transitionModeField.SetValueWithoutNotify(transition.GetMode());
             this.priorityField.SetValueWithoutNotify(transition.Priority);
+            this.transitionDelayField.SetValueWithoutNotify(transition.Delay);
+            this.cancelWhenConditionFailsToggle.SetValueWithoutNotify(
+                transition.CancelWhenConditionFails);
             RefreshConditionList(transition);
             UpdateAutomaticWarning(transition);
             UpdateSelectedTransitionGroup(transition);
@@ -1897,6 +1937,35 @@ namespace UnityFramework.FSM.Editor
             SaveSelectedData();
         }
 
+        private void OnTransitionDelayChanged(ChangeEvent<float> changeEvent)
+        {
+            if (this.isUpdatingFields || this.selectedData == null ||
+                !(this.selectedElementData is FSMTransitionData transition))
+                return;
+
+            float delay = changeEvent.newValue;
+            if (float.IsNaN(delay) || float.IsInfinity(delay) || delay < 0.0f)
+            {
+                delay = 0.0f;
+                this.transitionDelayField.SetValueWithoutNotify(delay);
+            }
+
+            Undo.RecordObject(this.selectedData, "Change FSM Transition Delay");
+            transition.SetDelay(delay);
+            SaveSelectedData();
+        }
+
+        private void OnCancelWhenConditionFailsChanged(ChangeEvent<bool> changeEvent)
+        {
+            if (this.isUpdatingFields || this.selectedData == null ||
+                !(this.selectedElementData is FSMTransitionData transition))
+                return;
+
+            Undo.RecordObject(this.selectedData, "Change FSM Transition Cancellation");
+            transition.SetCancelWhenConditionFails(changeEvent.newValue);
+            SaveSelectedData();
+        }
+
         private void SaveSelectedData()
         {
             if (this.selectedData != null)
@@ -1913,12 +1982,26 @@ namespace UnityFramework.FSM.Editor
             {
                 this.nextMachineRefreshTime = currentTime + MachineRefreshInterval;
                 RefreshStateMachineList(false);
+                UpdateDetailPanel();
             }
 
             if (this.transitionHighlightEndTime > 0.0d && currentTime >= this.transitionHighlightEndTime)
             {
-                this.transitionHighlightEndTime = 0.0d;
-                this.graphView?.ClearTransitionHighlight();
+                StateTransition pendingTransition =
+                    this.selectedStateMachine?.GetPendingTransition();
+                if (pendingTransition != null)
+                {
+                    this.graphView?.HighlightTransition(
+                        pendingTransition,
+                        StateChangeResult.Pending);
+                    this.transitionHighlightEndTime =
+                        currentTime + TransitionHighlightDuration;
+                }
+                else
+                {
+                    this.transitionHighlightEndTime = 0.0d;
+                    this.graphView?.ClearTransitionHighlight();
+                }
             }
         }
 
@@ -1948,6 +2031,35 @@ namespace UnityFramework.FSM.Editor
         private void RefreshAfterUndo()
         {
             this.isUndoRefreshScheduled = false;
+            RefreshAssetView();
+        }
+
+        private void RefreshCurrentView()
+        {
+            if (this.viewMode == ViewMode.AssetEdit)
+                RefreshAssetView();
+            else
+                RefreshStateMachineList(true);
+        }
+
+        private void ScheduleAssetViewRefresh()
+        {
+            if (this.isAssetRefreshScheduled)
+                return;
+
+            this.isAssetRefreshScheduled = true;
+            rootVisualElement.schedule.Execute(RefreshScheduledAssetView).ExecuteLater(1);
+        }
+
+        private void RefreshScheduledAssetView()
+        {
+            this.isAssetRefreshScheduled = false;
+            if (this.viewMode == ViewMode.AssetEdit)
+                RefreshAssetView();
+        }
+
+        private void RefreshAssetView()
+        {
             this.graphView?.SetFSMData(this.selectedData);
             UpdateStateIDTypeField();
             UpdateConditionTypeField();
@@ -1955,14 +2067,6 @@ namespace UnityFramework.FSM.Editor
             RefreshParameterList();
             SetSelectedElementData(null);
             UpdateDetailPanel();
-        }
-
-        private void RefreshCurrentView()
-        {
-            if (this.viewMode == ViewMode.AssetEdit)
-                this.graphView?.SetFSMData(this.selectedData);
-            else
-                RefreshStateMachineList(true);
         }
 
         private void RefreshStateMachineList(bool forceRefresh)
@@ -2024,6 +2128,10 @@ namespace UnityFramework.FSM.Editor
 
             if (this.selectedStateMachine != null)
             {
+                FSMData sourceData = this.selectedStateMachine.GetSourceData();
+                if (sourceData != null)
+                    this.selectedData = sourceData;
+
                 this.selectedStateMachine.StateChanged += OnStateChanged;
                 this.selectedStateMachine.TransitionEvaluated += OnTransitionEvaluated;
             }
@@ -2073,6 +2181,7 @@ namespace UnityFramework.FSM.Editor
                 this.ownerValueLabel.text = this.selectedData != null ? this.selectedData.name : "-";
                 this.runningValueLabel.text = "No";
                 this.currentStateValueLabel.text = GetInitialStateName();
+                this.pendingTransitionValueLabel.text = "-";
                 this.stateCountValueLabel.text = this.selectedData?.States.Count.ToString() ?? "0";
                 this.transitionCountValueLabel.text = this.selectedData?.Transitions.Count.ToString() ?? "0";
                 return;
@@ -2083,6 +2192,7 @@ namespace UnityFramework.FSM.Editor
                 this.ownerValueLabel.text = "-";
                 this.runningValueLabel.text = "-";
                 this.currentStateValueLabel.text = "-";
+                this.pendingTransitionValueLabel.text = "-";
                 this.stateCountValueLabel.text = "0";
                 this.transitionCountValueLabel.text = "0";
                 this.graphView?.SetActiveState(null);
@@ -2094,6 +2204,10 @@ namespace UnityFramework.FSM.Editor
             int? currentStateID = this.selectedStateMachine.GetCurrentStateID();
             this.currentStateValueLabel.text = currentStateID.HasValue
                 ? $"{GetStateName(currentStateID.Value)} ({currentStateID.Value})"
+                : "None";
+            StateTransition pendingTransition = this.selectedStateMachine.GetPendingTransition();
+            this.pendingTransitionValueLabel.text = pendingTransition != null
+                ? $"{pendingTransition.Name} ({this.selectedStateMachine.GetPendingTransitionRemainingTime():0.000}s)"
                 : "None";
             this.stateCountValueLabel.text = this.selectedStateMachine.GetStates().Count.ToString();
             this.transitionCountValueLabel.text = this.selectedStateMachine.GetTransitions().Count.ToString();
@@ -2155,9 +2269,15 @@ namespace UnityFramework.FSM.Editor
 
         private string GetStateName(int stateID)
         {
-            if (this.selectedStateMachine != null &&
-                this.selectedStateMachine.GetStates().TryGetValue(stateID, out State state))
-                return state.Name;
+            if (this.selectedStateMachine != null)
+            {
+                FSMStateData sourceState = this.selectedStateMachine.GetSourceData()?.FindState(stateID);
+                if (sourceState != null && !string.IsNullOrWhiteSpace(sourceState.Name))
+                    return sourceState.Name;
+
+                if (this.selectedStateMachine.GetStates().TryGetValue(stateID, out State state))
+                    return state.Name;
+            }
 
             return stateID.ToString();
         }

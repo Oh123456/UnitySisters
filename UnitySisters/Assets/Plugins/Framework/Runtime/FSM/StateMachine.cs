@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using UnityEngine;
 
 namespace UnityFramework.FSM
 {
@@ -21,6 +22,8 @@ namespace UnityFramework.FSM
         private readonly IFSMParameterBinder parameterBinder;
 
         private State currentState;
+        private StateTransition pendingTransition;
+        private float pendingTransitionElapsedTime;
         private int defaultStateID;
         private bool isRunning;
 
@@ -34,7 +37,7 @@ namespace UnityFramework.FSM
         /// </summary>
         /// <param name="owner">상태에서 사용할 소유 객체</param>
         public StateMachine(object owner)
-            : this(owner, null, null)
+            : this(owner, null, null, null)
         {
         }
 
@@ -44,17 +47,20 @@ namespace UnityFramework.FSM
         internal StateMachine(
             object owner,
             FSMData sourceData,
-            IReadOnlyList<FSMParameterData> parameters)
+            IReadOnlyList<FSMParameterData> parameters,
+            IFSMParameterBinder parameterBinder)
         {
             this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
             this.sourceData = sourceData;
             if (sourceData != null && sourceData.GetUsesFieldParameterBinding())
             {
-                this.parameterBinder = owner as IFSMParameterBinder;
+                // 별도 바인더가 없으면 기존 방식대로 Owner에서 Parameter를 읽는다.
+                this.parameterBinder = parameterBinder ?? owner as IFSMParameterBinder;
                 if (this.parameterBinder == null)
                     throw new InvalidOperationException(
                         $"FSMData '{sourceData.name}' requires a generated FSM Parameter binder, " +
-                        $"but owner '{owner.GetType().FullName}' does not implement IFSMParameterBinder.");
+                        $"but no binder was supplied and owner '{owner.GetType().FullName}' " +
+                        "does not implement IFSMParameterBinder.");
             }
             int stateCapacity = sourceData?.States.Count ?? 0;
             int transitionCapacity = sourceData?.Transitions.Count ?? 0;
@@ -112,6 +118,18 @@ namespace UnityFramework.FSM
         /// 등록된 전이 목록 반환
         /// </summary>
         public IReadOnlyList<StateTransition> GetTransitions() => this.readOnlyTransitions;
+
+        public StateTransition GetPendingTransition() => this.pendingTransition;
+
+        public float GetPendingTransitionRemainingTime()
+        {
+            if (this.pendingTransition == null)
+                return 0.0f;
+
+            return Mathf.Max(
+                0.0f,
+                this.pendingTransition.Delay - this.pendingTransitionElapsedTime);
+        }
 
         /// <summary>
         /// 상태 머신 소유자 반환
@@ -223,10 +241,18 @@ namespace UnityFramework.FSM
         /// </summary>
         public void Update()
         {
+            Update(Time.deltaTime);
+        }
+
+        public void Update(float deltaTime)
+        {
             EnsureRunning();
+            if (float.IsNaN(deltaTime) || float.IsInfinity(deltaTime) || deltaTime < 0.0f)
+                throw new ArgumentOutOfRangeException(nameof(deltaTime));
+
             currentState.Update(owner);
             SyncBoundParameters();
-            EvaluateAutomaticTransitions();
+            EvaluateAutomaticTransitions(deltaTime);
         }
 
         /// <summary>
@@ -285,15 +311,14 @@ namespace UnityFramework.FSM
                 return false;
             }
 
-            result = StateChangeResult.Success;
-            RaiseTransitionEvaluated(id, selectedTransition, result);
-            ApplyTransition(selectedTransition);
-            return true;
+            result = RequestTransition(selectedTransition);
+            return result == StateChangeResult.Success || result == StateChangeResult.Pending;
         }
 
         public bool ForceChangeState(int id)
         {
             EnsureRunning();
+            CancelPendingTransition();
             if (this.currentState.ID == id || !this.states.ContainsKey(id))
                 return false;
 
@@ -372,6 +397,7 @@ namespace UnityFramework.FSM
         public void ResetState()
         {
             EnsureRunning();
+            CancelPendingTransition();
 
             int previousStateID = currentState.ID;
             currentState.Exit(owner);
@@ -383,21 +409,107 @@ namespace UnityFramework.FSM
         /// <summary>
         /// 현재 상태에서 나가는 자동 전이만 평가하고 한 프레임에 하나의 상태 변경만 허용한다.
         /// </summary>
-        private void EvaluateAutomaticTransitions()
+        private void EvaluateAutomaticTransitions(float deltaTime)
         {
+            if (this.pendingTransition != null &&
+                this.pendingTransition.CancelWhenConditionFails &&
+                !this.pendingTransition.Evaluate(this))
+            {
+                CancelPendingTransition();
+            }
+
             StateTransition selectedTransition = FindPassingTransition(
                 null,
                 FSMTransitionMode.Automatic,
                 out _,
                 out _);
-            if (selectedTransition == null)
+
+            if (selectedTransition != null)
+                RequestTransition(selectedTransition, false);
+
+            if (this.pendingTransition == null)
                 return;
 
+            this.pendingTransitionElapsedTime += deltaTime;
+            if (this.pendingTransitionElapsedTime < this.pendingTransition.Delay)
+                return;
+
+            StateTransition completedTransition = this.pendingTransition;
+            ClearPendingTransition();
             RaiseTransitionEvaluated(
-                selectedTransition.ToStateID,
-                selectedTransition,
+                completedTransition.ToStateID,
+                completedTransition,
                 StateChangeResult.Success);
-            ApplyTransition(selectedTransition);
+            ApplyTransition(completedTransition);
+        }
+
+        /// <summary>
+        /// 즉시 전이는 바로 적용하고 지연 전이는 우선순위 규칙에 따라 Pending으로 등록한다.
+        /// </summary>
+        private StateChangeResult RequestTransition(
+            StateTransition transition,
+            bool raiseBlockedEvent = true)
+        {
+            if (this.pendingTransition != null)
+            {
+                if (ReferenceEquals(this.pendingTransition, transition))
+                    return StateChangeResult.Pending;
+
+                if (transition.Priority <= this.pendingTransition.Priority)
+                {
+                    if (raiseBlockedEvent)
+                    {
+                        RaiseTransitionEvaluated(
+                            transition.ToStateID,
+                            transition,
+                            StateChangeResult.PendingBlocked);
+                    }
+                    return StateChangeResult.PendingBlocked;
+                }
+
+                CancelPendingTransition();
+            }
+
+            if (transition.Delay <= 0.0f)
+            {
+                RaiseTransitionEvaluated(
+                    transition.ToStateID,
+                    transition,
+                    StateChangeResult.Success);
+                ApplyTransition(transition);
+                return StateChangeResult.Success;
+            }
+
+            this.pendingTransition = transition;
+            this.pendingTransitionElapsedTime = 0.0f;
+            RaiseTransitionEvaluated(
+                transition.ToStateID,
+                transition,
+                StateChangeResult.Pending);
+            return StateChangeResult.Pending;
+        }
+
+        /// <summary>
+        /// 취소된 전이의 Trigger가 이후 상태에서 늦게 발동하지 않도록 함께 정리한다.
+        /// </summary>
+        private void CancelPendingTransition()
+        {
+            if (this.pendingTransition == null)
+                return;
+
+            StateTransition cancelledTransition = this.pendingTransition;
+            ClearPendingTransition();
+            cancelledTransition.ConsumeTriggers(this);
+            RaiseTransitionEvaluated(
+                cancelledTransition.ToStateID,
+                cancelledTransition,
+                StateChangeResult.PendingCancelled);
+        }
+
+        private void ClearPendingTransition()
+        {
+            this.pendingTransition = null;
+            this.pendingTransitionElapsedTime = 0.0f;
         }
 
         private StateTransition FindPassingTransition(
