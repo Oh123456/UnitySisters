@@ -8,12 +8,13 @@ namespace UnitySisters.Controller
 {
     [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "", sourceAssembly: "Assembly-CSharp")]
     [System.Serializable]
-    public class MovementController : IModelBinder<MovementModel>
+    public class MovementController : MonoBehaviour, IModelBinder<MovementModel>
     {
         private enum JumpState
         {
             Standing,
             Falling,
+            JumpDelay,
         }
 
         [Header("Movement")]
@@ -30,24 +31,19 @@ namespace UnitySisters.Controller
         [Header("Jump")]
         [SerializeField] private int jumpCount = 1;
         [SerializeField] private float jumpPower = 10.0f;
-        [Tooltip("코요테 타임 : 점프시 낙하중에 일정기간 점프 가능 여유 시간")] 
+        [Tooltip("코요테 타임 : 점프시 낙하중에 일정기간 점프 가능 여유 시간")]
         [SerializeField] private float coyoteTime = 0.15f;
+        [SerializeField] private float jumpBetweenDelay = 0.1f;
 
 
         protected MovementModel movementModel;
         private StatePattern<JumpState> jumpState;
         private float currentCoyoteTime = 0.0f;
         private int currentJumpCount = 0;
+        private float currentJumpBetweenDelay = 0.0f;
 
 
         public bool IsMovement => isMovement;
-
-        /// <summary>
-        /// 생성자 막아서 기본적으로 new 방지
-        /// </summary>
-        protected MovementController() 
-        {
-        }
 
         public void Initialize()
         {
@@ -88,11 +84,23 @@ namespace UnitySisters.Controller
             velocity.x = moveVelocity.x;
             velocity.z = moveVelocity.z;
 
-            if (movementCommand.isJumpButton &&
-                currentJumpCount > 0)
+            if (currentJumpCount > 0)
             {
-                velocity.y += jumpPower;
-                SubtractumpCount();
+                if (jumpState.CurrentState != JumpState.JumpDelay &&
+                    movementCommand.isJumpButton)
+                {
+                    velocity.y = jumpPower;
+                    SubtractumpCount();
+                }
+                else if(jumpState.CurrentState != JumpState.Standing)
+                {
+                    currentJumpBetweenDelay += Time.deltaTime;
+                    if (currentJumpBetweenDelay <= jumpBetweenDelay)
+                    {
+                        jumpState.ChangeState(JumpState.Falling);
+                    }
+                }
+
             }
 
             if (moveRotation && !moveInput.Equals(Vector2.zero))
@@ -132,9 +140,11 @@ namespace UnitySisters.Controller
             {
                 velocity += (Physics.gravity * Time.fixedDeltaTime);
                 movementModel.isGrounded = false;
+                // 코여테타임
                 if (jumpState.CurrentState == JumpState.Standing)
                 {
                     currentCoyoteTime += Time.deltaTime;
+                    Debug.Log(currentCoyoteTime);
                     if (coyoteTime <= currentCoyoteTime)
                     {
                         SubtractumpCount();
@@ -145,8 +155,12 @@ namespace UnitySisters.Controller
 
         private void SubtractumpCount()
         {
+            movementModel.additionalJump = jumpCount - currentJumpCount != 0;
             --currentJumpCount;
-            jumpState.ChangeState(JumpState.Falling);
+            if (currentJumpCount > 0)
+                jumpState.ChangeState(JumpState.JumpDelay);
+            else
+                jumpState.ChangeState(JumpState.Falling);
         }
 
         private void OnChangeJunpState(JumpState per, JumpState current)
@@ -159,10 +173,13 @@ namespace UnitySisters.Controller
                 case JumpState.Falling:
                     currentCoyoteTime = 0.0f;
                     break;
+                case JumpState.JumpDelay:
+                    currentJumpBetweenDelay = 0.0f;
+                    break;
                 default:
                     break;
             }
-             
+
         }
 
         [System.Diagnostics.Conditional("UNITY_EDITOR")]

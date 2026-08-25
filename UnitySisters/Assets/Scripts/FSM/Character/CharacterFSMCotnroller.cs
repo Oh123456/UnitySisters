@@ -1,16 +1,16 @@
 using UnityEngine;
 using UnityFramework.FSM;
+using UnitySisters.Model;
 
 namespace FSM
 {
 
     [RequireComponent(typeof(Character))]
-    public class CharacterFSMCotnroller : FSMController
+    public partial class CharacterFSMCotnroller : FSMController
     {
         [FSMCondition]
         protected enum CharacterCondition
         {
-
         }
 
         [FSMStateID]
@@ -18,10 +18,14 @@ namespace FSM
         {
             Idile = 0,
             Move = 1,
-            Jump = 2,
+            Landing = 2,
             Falling = 3,
 
         }
+
+        private CharacterFSMModel characterFSMModel = new CharacterFSMModel();
+
+        public CharacterFSMModel CharacterFSMModel => characterFSMModel;
 
         protected override System.Func<IStateMachine, bool> CreateCondition(int conditionID)
         {
@@ -53,7 +57,7 @@ namespace FSM
                         stateManager.TryGetState(stateKey, out state, () => new EmptyState(id));
                         break;
                     }
-                case CharacterStateID.Jump:
+                case CharacterStateID.Landing:
                     {
                         StateKey stateKey = new StateKey(typeof(EmptyState), enumType, id);
                         stateManager.TryGetState(stateKey, out state, () => new EmptyState(id));
@@ -71,6 +75,10 @@ namespace FSM
             }
 
             return state;
+        }
+        protected override IFSMParameterBinder GetParameterBinder()
+        {
+            return this.characterFSMModel as IFSMParameterBinder;
         }
     }
 

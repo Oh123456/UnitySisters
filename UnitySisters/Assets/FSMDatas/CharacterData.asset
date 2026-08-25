@@ -13,69 +13,146 @@ MonoBehaviour:
   m_Name: CharacterData
   m_EditorClassIdentifier: 
   initialStateID: 0
+  useFieldParameterBinding: 1
   nextStateID: 1
+  nextParameterID: 1
   stateIDTypeID: Assembly-CSharp:FSM.CharacterFSMCotnroller+CharacterStateID
   conditionTypeID: Assembly-CSharp:FSM.CharacterFSMCotnroller+CharacterCondition
+  parameterSourceTypeID: Assembly-CSharp:UnitySisters.Model.CharacterFSMModel
   states:
   - id: 0
     name: Idile
-    position: {x: 246, y: -105}
+    position: {x: 215, y: -133}
   - id: 1
     name: Move
-    position: {x: 445, y: -229}
-  - id: 2
-    name: Jump
-    position: {x: 645, y: -105}
+    position: {x: 542, y: -447}
   - id: 3
     name: Falling
-    position: {x: 422, y: 44}
+    position: {x: 752, y: -137}
   transitions:
-  - fromStateID: 0
-    toStateID: 3
-    name: 0 To 3
-    hasCondition: 0
-    conditionID: 0
-    priority: 0
-    routePoints: []
-  - fromStateID: 0
-    toStateID: 2
-    name: 0 To 2
-    hasCondition: 0
-    conditionID: 0
-    priority: 0
-    routePoints: []
-  - fromStateID: 1
-    toStateID: 2
-    name: 1 To 2
-    hasCondition: 0
-    conditionID: 0
-    priority: 0
-    routePoints: []
-  - fromStateID: 2
-    toStateID: 3
-    name: 2 To 3
-    hasCondition: 0
-    conditionID: 0
-    priority: 0
-    routePoints: []
-  - fromStateID: 3
-    toStateID: 0
-    name: 3 To 0
-    hasCondition: 0
-    conditionID: 0
-    priority: 0
-    routePoints: []
   - fromStateID: 0
     toStateID: 1
     name: Idile To Move
-    hasCondition: 0
-    conditionID: 0
+    mode: 1
+    conditions:
+    - kind: 0
+      parameterID: 1979653364
+      comparison: 1
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      customConditionID: 0
+      customExpectedResult: 1
+    - kind: 0
+      parameterID: -1913644283
+      comparison: 0
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      customConditionID: 0
+      customExpectedResult: 1
     priority: 0
+    delay: 0
+    cancelWhenConditionFails: 0
+    legacyHasCondition: 0
+    legacyConditionID: 0
     routePoints: []
   - fromStateID: 1
     toStateID: 0
     name: Move To Idile
-    hasCondition: 0
-    conditionID: 0
+    mode: 1
+    conditions:
+    - kind: 0
+      parameterID: 1979653364
+      comparison: 0
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      customConditionID: 0
+      customExpectedResult: 1
+    - kind: 0
+      parameterID: -1913644283
+      comparison: 0
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      customConditionID: 0
+      customExpectedResult: 1
     priority: 0
+    delay: 0
+    cancelWhenConditionFails: 0
+    legacyHasCondition: 0
+    legacyConditionID: 0
     routePoints: []
+  - fromStateID: 1
+    toStateID: 3
+    name: Move To Falling
+    mode: 1
+    conditions:
+    - kind: 0
+      parameterID: -1913644283
+      comparison: 0
+      boolValue: 1
+      intValue: 0
+      floatValue: 0
+      customConditionID: 0
+      customExpectedResult: 1
+    priority: 0
+    delay: 0
+    cancelWhenConditionFails: 0
+    legacyHasCondition: 0
+    legacyConditionID: 0
+    routePoints: []
+  - fromStateID: 0
+    toStateID: 3
+    name: Idile To Falling
+    mode: 1
+    conditions:
+    - kind: 0
+      parameterID: -1913644283
+      comparison: 0
+      boolValue: 1
+      intValue: 0
+      floatValue: 0
+      customConditionID: 0
+      customExpectedResult: 1
+    priority: 0
+    delay: 0
+    cancelWhenConditionFails: 0
+    legacyHasCondition: 0
+    legacyConditionID: 0
+    routePoints: []
+  - fromStateID: 3
+    toStateID: 0
+    name: Falling To Idile
+    mode: 1
+    conditions:
+    - kind: 0
+      parameterID: -1913644283
+      comparison: 0
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      customConditionID: 0
+      customExpectedResult: 1
+    priority: 0
+    delay: 0
+    cancelWhenConditionFails: 0
+    legacyHasCondition: 0
+    legacyConditionID: 0
+    routePoints: []
+  parameters:
+  - id: 1979653364
+    name: moveValue
+    type: 2
+    defaultBoolValue: 0
+    defaultIntValue: 0
+    defaultFloatValue: 0
+    bindingKey: Assembly-CSharp:UnitySisters.Model.CharacterFSMModel:moveValue
+  - id: -1913644283
+    name: isFalling
+    type: 0
+    defaultBoolValue: 0
+    defaultIntValue: 0
+    defaultFloatValue: 0
+    bindingKey: Assembly-CSharp:UnitySisters.Model.CharacterFSMModel:isFalling

@@ -18,10 +18,24 @@ namespace FSM
             UnregisterEvent();
         }
 
+        private void Update()
+        {
+            if (stateMachine == null)
+                return;
+            stateMachine.Update();
+        }
+
+
+        public int? GetCurrentStateID()
+        {
+            return stateMachine.GetCurrentStateID();
+        }
+
         public void CreateStateMachine()
         {
             this.stateMachine = this.fsmData.CreateStateMachine(
                 this,
+                GetParameterBinder(),
                 CreateState,
                 CreateCondition);
 
@@ -37,6 +51,14 @@ namespace FSM
         protected virtual void UnregisterEvent()
         {
 
+        }
+
+        /// <summary>
+        /// 기본값은 Controller 자신이며, Model을 직접 바인딩할 때 재정의한다.
+        /// </summary>
+        protected virtual IFSMParameterBinder GetParameterBinder()
+        {
+            return this as IFSMParameterBinder;
         }
 
         public void StartStateMachine()

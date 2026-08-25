@@ -43,6 +43,8 @@ GameObject:
   - component: {fileID: 2227266558266102254}
   - component: {fileID: 6285240640270899845}
   - component: {fileID: 8877441911836399548}
+  - component: {fileID: 7871517726820245889}
+  - component: {fileID: 2278072537853742993}
   m_Layer: 6
   m_Name: SD_Unity_Chan
   m_TagString: Untagged
@@ -104,36 +106,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0012093bbe625054a93f93254c8afc22, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  controller: {fileID: 2227266558266102254}
   carmeraTarget: {fileID: 8714078016661903998}
-  characterTarget: {fileID: 0}
-  isGravity: 1
-  groundCheckDistance: 0.2
-  groundCheckOffset: {x: 0, y: 0.25, z: 0}
-  minPitch: -60
-  maxPitch: 20
-  movementController:
-    rid: 6755534979556180040
-  jumpPower: 10
-  isMovement: 1
-  moveSpeed: 2
-  moveRotation: 1
+  characterTarget: {fileID: 3692879968775000431}
+  animationController: {fileID: 7871517726820245889}
+  movementController: {fileID: 2278072537853742993}
   characterFSMCotnroller: {fileID: 8877441911836399548}
-  references:
-    version: 2
-    RefIds:
-    - rid: 6755534979556180040
-      type: {class: CharacterMovementController, ns: UnitySisters.Controller, asm: Assembly-CSharp}
-      data:
-        jumpPower: 10
-        isMovement: 1
-        moveSpeed: 2
-        moveRotation: 1
-        isGravity: 1
-        groundCheckDistance: 0.2
-        groundCheckOffset: {x: 0, y: 0.25, z: 0}
-        groundCheckRadius: 0.23
-        characterController: {fileID: 2227266558266102254}
 --- !u!114 &8877441911836399548
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -147,6 +124,43 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fsmData: {fileID: 11400000, guid: 24e26965e8dca6343aaa8cd301036e87, type: 2}
+--- !u!114 &7871517726820245889
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8665634975146125619}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 82211955e2071844ba0e4f15df274d9c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 7340746517562559253}
+--- !u!114 &2278072537853742993
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8665634975146125619}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6bfdd76511ff93e4fa6cc3005b55d577, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  isMovement: 1
+  moveSpeed: 2
+  moveRotation: 1
+  isGravity: 1
+  groundCheckDistance: 0.2
+  groundCheckOffset: {x: 0, y: 0.25, z: 0}
+  groundCheckRadius: 0.23
+  jumpCount: 2
+  jumpPower: 7.5
+  coyoteTime: 0.3
+  jumpBetweenDelay: 0.1
+  characterController: {fileID: 2227266558266102254}
 --- !u!1001 &453888412758731170
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -199,6 +213,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: SD_Unity_Chan
       objectReference: {fileID: 0}
+    - target: {fileID: 7175108369142178487, guid: 234a458d2bc9de040834a24c42610268, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 8a95f650b524e5148b58f4fc4583f177, type: 2}
+    - target: {fileID: 7175108369142178487, guid: 234a458d2bc9de040834a24c42610268, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -207,5 +229,10 @@ PrefabInstance:
 --- !u!4 &3692879968775000431 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3851483538773457101, guid: 234a458d2bc9de040834a24c42610268, type: 3}
+  m_PrefabInstance: {fileID: 453888412758731170}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &7340746517562559253 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 7175108369142178487, guid: 234a458d2bc9de040834a24c42610268, type: 3}
   m_PrefabInstance: {fileID: 453888412758731170}
   m_PrefabAsset: {fileID: 0}

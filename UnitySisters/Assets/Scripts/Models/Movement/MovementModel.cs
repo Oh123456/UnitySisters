@@ -8,6 +8,7 @@ namespace UnitySisters.Model
         public Transform rotationTarget;
         private Vector3 velocity;
         public bool isGrounded;
+        public bool additionalJump;
 
         public Vector3 Velocity
         {

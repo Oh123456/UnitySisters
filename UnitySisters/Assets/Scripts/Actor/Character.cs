@@ -6,29 +6,23 @@ using UnitySisters.Model;
 
 [RequireComponent(typeof(CharacterController))]
 public class Character : MonoBehaviour
-{
-
-    protected static Vector3 gravity = new Vector3(0.0f, -9.81f, 0.0f);
-
-    [SerializeField] private CharacterController controller;
+{    
     [SerializeField] private Transform carmeraTarget;
     [SerializeField] private Transform characterTarget;
 
+    [Header("Animiation")]
+    [SerializeField] private AnimationController animationController;
+
     [Header("Movement")]
-    [SerializeReference] private MovementController movementController = new CharacterMovementController();
+    [SerializeField] private MovementController movementController;
 
     [Header("FMS")]
     [SerializeField] CharacterFSMCotnroller characterFSMCotnroller;
 
     private MovementModel movementModel = null;
-
+    private CharacterAnimationModel characterAnimationModel = null;
     public Transform CarmeraTarget => carmeraTarget;
     public MovementController MovementController => movementController;
-
-    private void Reset()
-    {
-        controller = GetComponent<CharacterController>();
-    }
 
     private void Awake()
     {
@@ -38,7 +32,12 @@ public class Character : MonoBehaviour
             rotationTarget = characterTarget,
         };
 
+        movementController.Initialize();
         movementController.SetModel(movementModel: movementModel);
+
+        characterAnimationModel = new CharacterAnimationModel();
+
+        animationController.SetModel(characterAnimationModel);
 
         if (characterFSMCotnroller != null)
         {
@@ -50,6 +49,56 @@ public class Character : MonoBehaviour
     public void ExecuteCommand(CharacterCommand command)
     {
         movementController?.Move(command.movementCommand);
+    }
+
+    private void Update()
+    {
+        animationController?.UpdateAnimation();
+    }
+
+    private void LateUpdate()
+    {
+        UpdateFSMModel();
+        UpdateAnimationModel();
+
+
+        ClearModelData();
+    }
+
+    private void UpdateFSMModel()
+    {
+        if (characterFSMCotnroller == null)
+            return;
+        var model = characterFSMCotnroller.CharacterFSMModel;
+        if (model == null)
+            return;
+
+        Vector3 velocity = movementModel.Velocity;
+        float falling = velocity.y;
+        velocity.y = 0.0f;
+        model.moveValue = velocity.sqrMagnitude;
+        model.isFalling = !falling.Equals(0.0f);
+    }
+
+    private void UpdateAnimationModel()
+    {
+        if (characterAnimationModel == null)
+            return;
+
+        if (characterFSMCotnroller == null)
+            return;
+
+        characterAnimationModel.stateID = (int)characterFSMCotnroller.GetCurrentStateID();
+
+        Vector3 velocity = movementModel.Velocity;
+        characterAnimationModel.yValue = velocity.y;
+        characterAnimationModel.isFalling = !characterAnimationModel.yValue.Equals(0.0f);
+        characterAnimationModel.additionalJunmp = movementModel.additionalJump;
+    }
+
+    private void ClearModelData()
+    {
+        movementModel.additionalJump = false;
     }
 
     private void OnDrawGizmos()

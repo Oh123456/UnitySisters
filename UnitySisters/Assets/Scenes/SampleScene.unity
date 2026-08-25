@@ -184,9 +184,9 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6285240640270899845, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
-      propertyPath: characterTarget
-      value: 
-      objectReference: {fileID: 894301771}
+      propertyPath: managedReferences[6755534979556180040].coyoteTime
+      value: 0.15
+      objectReference: {fileID: 0}
     - target: {fileID: 8665634975146125619, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
       propertyPath: m_Name
       value: SD_Unity_Chan
@@ -511,11 +511,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!4 &894301771 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 3692879968775000431, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
-  m_PrefabInstance: {fileID: 589076321}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1219731810
 GameObject:
   m_ObjectHideFlags: 0
@@ -994,6 +989,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cinemachineCamera: {fileID: 1667486595}
+  cameraControiller:
+    minPitch: -60
+    maxPitch: 20
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
