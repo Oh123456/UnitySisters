@@ -100,10 +100,12 @@ namespace UnityFramework.FSM.Editor
         [MenuItem("Tools/FSM/Editor", false, 0)]
         public static void OpenWindow()
         {
-            FSMEditorWindow window = GetWindow<FSMEditorWindow>();
+            FSMEditorWindow window = GetWindow<FSMEditorWindow>(
+                "FSM Editor",
+                true,
+                typeof(SceneView));
             window.titleContent = new GUIContent("FSM Editor");
             window.minSize = new Vector2(860.0f, 500.0f);
-            window.Show();
         }
 
         private void OnEnable()
@@ -136,6 +138,13 @@ namespace UnityFramework.FSM.Editor
         public void CreateGUI()
         {
             rootVisualElement.Clear();
+            rootVisualElement.UnregisterCallback<KeyDownEvent>(
+                OnRootKeyDown,
+                TrickleDown.TrickleDown);
+            rootVisualElement.RegisterCallback<KeyDownEvent>(
+                OnRootKeyDown,
+                TrickleDown.TrickleDown);
+
             StyleSheet styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(StylePath);
             if (styleSheet != null)
                 rootVisualElement.styleSheets.Add(styleSheet);
@@ -2040,6 +2049,18 @@ namespace UnityFramework.FSM.Editor
                 RefreshAssetView();
             else
                 RefreshStateMachineList(true);
+        }
+
+        /// <summary>
+        /// FSM 에디터에 포커스가 있을 때 F5 입력을 현재 화면 새로고침으로 처리
+        /// </summary>
+        private void OnRootKeyDown(KeyDownEvent keyDownEvent)
+        {
+            if (keyDownEvent.keyCode != KeyCode.F5)
+                return;
+
+            RefreshCurrentView();
+            keyDownEvent.StopImmediatePropagation();
         }
 
         private void ScheduleAssetViewRefresh()

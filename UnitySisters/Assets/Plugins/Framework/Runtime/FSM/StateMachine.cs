@@ -156,6 +156,7 @@ namespace UnityFramework.FSM
 
             if (state == null)
                 throw new ArgumentNullException(nameof(state));
+            state.ValidateInitialization();
             if (states.ContainsKey(state.ID))
                 throw new ArgumentException($"A state with ID {state.ID} is already registered.", nameof(state));
 

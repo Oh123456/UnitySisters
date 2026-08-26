@@ -595,6 +595,7 @@ namespace UnityFramework.FSM
                 State state = stateFactory.Invoke(stateData);
                 if (state == null)
                     throw new InvalidOperationException($"State factory returned null for state ID {stateData.ID}.");
+                state.ValidateInitialization();
                 if (state.ID != stateData.ID)
                     throw new InvalidOperationException(
                         $"State factory returned ID {state.ID}, but FSMData expected ID {stateData.ID}.");
