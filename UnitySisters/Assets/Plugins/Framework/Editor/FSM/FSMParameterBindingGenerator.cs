@@ -45,7 +45,7 @@ namespace UnityFramework.FSM.Editor
             CompilationPipeline.compilationFinished += OnCompilationFinished;
         }
 
-        [MenuItem("Tools/FSM/Generate Parameter Bindings", false, 20)]
+        [MenuItem("UnityFramework/FSM/Generate Parameter Bindings", false, 20)]
         private static void GenerateAll()
         {
             FSMParameterSourceGenerator.GenerateAll();

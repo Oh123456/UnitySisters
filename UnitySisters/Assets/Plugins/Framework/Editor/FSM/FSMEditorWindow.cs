@@ -97,7 +97,7 @@ namespace UnityFramework.FSM.Editor
         private bool isUndoRefreshScheduled;
         private bool isAssetRefreshScheduled;
 
-        [MenuItem("Tools/FSM/Editor", false, 0)]
+        [MenuItem("UnityFramework/FSM/Editor", false, 0)]
         public static void OpenWindow()
         {
             FSMEditorWindow window = GetWindow<FSMEditorWindow>(

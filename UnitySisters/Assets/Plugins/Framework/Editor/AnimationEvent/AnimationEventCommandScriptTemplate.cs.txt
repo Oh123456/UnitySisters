@@ -1,0 +1,8 @@
+using UnityFramework.Animation;
+
+public class #SCRIPTNAME# : AnimationEventCommand
+{
+    public override void Execute(AnimationEventReceiver animationEventReceiver)
+    {
+    }
+}
