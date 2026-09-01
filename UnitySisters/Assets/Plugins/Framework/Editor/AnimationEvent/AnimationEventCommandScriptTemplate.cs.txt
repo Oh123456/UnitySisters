@@ -1,5 +1,7 @@
+using UnityEngine;
 using UnityFramework.Animation;
 
+[System.Serializable]
 public class #SCRIPTNAME# : AnimationEventCommand
 {
     public override void Execute(AnimationEventReceiver animationEventReceiver)

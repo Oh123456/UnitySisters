@@ -193,6 +193,9 @@ public sealed class AnimationEventEditorWindow : EditorWindow
             return;
         }
 
+        if (!EnsureSerializedEventData())
+            return;
+
         serializedEventData.Update();
 
         Rect toolbarRect = new Rect(0.0f, 0.0f, position.width, ToolbarHeight);
@@ -210,6 +213,21 @@ public sealed class AnimationEventEditorWindow : EditorWindow
             SortAndSave();
             SamplePreviewPose();
         }
+    }
+
+    private bool EnsureSerializedEventData()
+    {
+        if (serializedEventData == null || serializedEventData.targetObject != eventData)
+            serializedEventData = new SerializedObject(eventData);
+
+        if (eventsProperty == null)
+            eventsProperty = serializedEventData.FindProperty(EventsPropertyName);
+
+        if (eventsProperty != null)
+            return true;
+
+        EditorGUILayout.HelpBox("AnimationEventData events property not found.", MessageType.Error);
+        return false;
     }
 
     private void DrawNoTargetGUI()
