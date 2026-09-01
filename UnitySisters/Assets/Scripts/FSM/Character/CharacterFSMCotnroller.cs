@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityFramework.FSM;
+using UnitySisters.FSM.States;
 using UnitySisters.Model;
 
 namespace FSM
@@ -20,7 +21,7 @@ namespace FSM
             Move = 1,
             Landing = 2,
             Falling = 3,
-
+            Attack = 4,
         }
 
         private CharacterFSMModel characterFSMModel = new CharacterFSMModel();
@@ -43,30 +44,37 @@ namespace FSM
             int id = stateData.ID;
             System.Type enumType = typeof(CharacterStateID);
             State state = null;
+            StateKey stateKey;
             switch ((CharacterStateID)id)
             {
                 case CharacterStateID.Idile:
                     {
-                        StateKey stateKey = new StateKey(typeof(EmptyState), enumType, id);
-                        stateManager.TryGetState(stateKey, out state, () => new EmptyState(id));
+                        stateKey = new StateKey(typeof(EmptyState), enumType, id);
+                        stateManager.TryGetState<EmptyState>(stateKey, out state);
                         break;
                     }
                 case CharacterStateID.Move:
                     {
-                        StateKey stateKey = new StateKey(typeof(EmptyState), enumType, id);
-                        stateManager.TryGetState(stateKey, out state, () => new EmptyState(id));
+                        stateKey = new StateKey(typeof(EmptyState), enumType, id);
+                        stateManager.TryGetState<EmptyState>(stateKey, out state);
                         break;
                     }
                 case CharacterStateID.Landing:
                     {
-                        StateKey stateKey = new StateKey(typeof(EmptyState), enumType, id);
-                        stateManager.TryGetState(stateKey, out state, () => new EmptyState(id));
+                        stateKey = new StateKey(typeof(EmptyState), enumType, id);
+                        stateManager.TryGetState<EmptyState>(stateKey, out state);
                         break;
                     }
                 case CharacterStateID.Falling:
                     {
-                        StateKey stateKey = new StateKey(typeof(EmptyState), enumType, id);
-                        stateManager.TryGetState(stateKey, out state, () => new EmptyState(id));
+                        stateKey = new StateKey(typeof(EmptyState), enumType, id);
+                        stateManager.TryGetState<EmptyState>(stateKey, out state);
+                        break;
+                    }
+                case CharacterStateID.Attack:
+                    {
+                        stateKey = new StateKey(typeof(AttackState), enumType, id);
+                        stateManager.TryGetState<AttackState>(stateKey, out state);
                         break;
                     }
                 default:

@@ -7,6 +7,9 @@ namespace FSM
     {
         [SerializeField] protected FSMData fsmData;
         protected StateMachine stateMachine;
+        protected MonoBehaviour controlOwner;
+
+        public MonoBehaviour ControlOwner => controlOwner;
 
         private void OnEnable()
         {
@@ -23,6 +26,13 @@ namespace FSM
             if (stateMachine == null)
                 return;
             stateMachine.Update();
+        }
+
+        public void Initialize(MonoBehaviour owner)
+        {
+            controlOwner = owner;
+            CreateStateMachine();
+            StartStateMachine();
         }
 
 
@@ -64,6 +74,11 @@ namespace FSM
         public void StartStateMachine()
         {
             this.stateMachine.Start(this.fsmData.InitialStateID);
+        }
+
+        public void ChangeState(int id)
+        {
+            this.stateMachine.ChangeState(id);
         }
 
         protected abstract State CreateState(FSMStateData stateData);

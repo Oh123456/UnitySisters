@@ -183,9 +183,37 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3692879968775000431, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3692879968775000431, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3692879968775000431, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3692879968775000431, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3692879968775000431, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3797950352245147955, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
+      propertyPath: collideWithGround
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6285240640270899845, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
       propertyPath: managedReferences[6755534979556180040].coyoteTime
       value: 0.15
+      objectReference: {fileID: 0}
+    - target: {fileID: 7340746517562559253, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8665634975146125619, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
       propertyPath: m_Name

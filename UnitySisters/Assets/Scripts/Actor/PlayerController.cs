@@ -1,29 +1,18 @@
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnitySisters.Command;
 using UnitySisters.Controller;
 using UnitySisters.Model;
-using static UnityEngine.InputSystem.InputAction;
-using PlayerActions = InputSystem_Actions.PlayerActions;
 
-public class PlayerController : _3DModule.Controller.BaseController<CharacterCommand>
+public partial class PlayerController : _3DModule.Controller.BaseController<CharacterCommand>
 {
-    private struct InputData
-    {
-        public InputAction inputAction;
-        public System.Action<CallbackContext> performed;
-        public System.Action<CallbackContext> canceled;
-        public System.Action<CallbackContext> started;
-    }
-
+ 
     [SerializeField] private CinemachineCamera cinemachineCamera;
 
     [Header("Camera")]
     [SerializeField] private CameraControiller cameraControiller = new CameraControiller();
 
-    private PlayerActions playerActions;
     private Character currentControlCharacter;
     private bool showMouseCursor = false;
     private CameraCotrolModel cameraCotrolModel;
@@ -44,18 +33,12 @@ public class PlayerController : _3DModule.Controller.BaseController<CharacterCom
 
     protected override void OnEnable()
     {
-        EnableInputSystem(playerActions.Move, MovePerformed, MoveCanceled);
-        EnableInputSystem(playerActions.Jump, JumpPerformed);
-        EnableInputSystem(playerActions.ToggleMouseCursor, ToggleMouseCursorPerformed);
-        EnableInputSystem(playerActions.Look);
+        EnableInputSystems();
     }
 
     protected override void OnDisable()
     {
-        while (inputDatas.Count > 0)
-        {
-            DisableInputSystem(inputDatas.Dequeue());
-        }
+        DisableInputSystems();
     }
 
     private void FixedUpdate()
@@ -80,11 +63,6 @@ public class PlayerController : _3DModule.Controller.BaseController<CharacterCom
         characterCommand.ClearData();
     }
 
-    private void InitializeInputSystem()
-    {
-        PlayerInputSystem playerInputSystem = InputManager.Instance.GetPlayerInputSystem();
-        playerActions = playerInputSystem.GetInputAction();
-    }
 
     private void InitializeCameraController()
     {
@@ -103,53 +81,6 @@ public class PlayerController : _3DModule.Controller.BaseController<CharacterCom
     {
         currentControlCharacter = null;
         cinemachineCamera.Target.TrackingTarget = null;
-    }
-
-    private void EnableInputSystem(InputAction inputAction, System.Action<CallbackContext> performed = null, System.Action<CallbackContext> canceled = null, System.Action<CallbackContext> started = null)
-    {
-        inputAction.Enable();
-        if (started != null)
-            inputAction.started += started;
-        if (performed != null)
-            inputAction.performed += performed;
-        if (canceled != null)
-            inputAction.canceled += canceled;
-
-        inputDatas.Enqueue(new InputData()
-        {
-            inputAction = inputAction,
-            started = started,
-            canceled = canceled,
-            performed = performed
-        });
-    }
-
-    private void DisableInputSystem(InputData inputData)
-    {
-        inputData.inputAction.Disable();
-        inputData.inputAction.started -= inputData.started;
-        inputData.inputAction.performed -= inputData.performed;
-        inputData.inputAction.canceled -= inputData.canceled;
-    }
-
-    private void MovePerformed(CallbackContext callbackContext)
-    {
-        characterCommand.movementCommand.moveInput = callbackContext.ReadValue<Vector2>();
-    }
-
-    private void MoveCanceled(CallbackContext obj)
-    {
-        characterCommand.movementCommand.moveInput = Vector2.zero;
-    }
-
-    private void ToggleMouseCursorPerformed(CallbackContext callbackContext)
-    {
-        showMouseCursor = !showMouseCursor;
-        UpdateMouseCursor();
-    }
-    private void JumpPerformed(CallbackContext callbackContext)
-    {
-        characterCommand.movementCommand.isJumpButton = true;
     }
 
     private void UpdateMouseCursor()

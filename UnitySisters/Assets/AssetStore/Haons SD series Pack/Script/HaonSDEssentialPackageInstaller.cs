@@ -54,7 +54,7 @@ public class HaonSDEssentialPackageInstaller : MonoBehaviour
     public void ForceCheckAndInstall()
     {
 #if UNITY_EDITOR
-        CheckAndInstall();
+        CheckAndInstall(true);
 #endif
     }
 
@@ -62,6 +62,11 @@ public class HaonSDEssentialPackageInstaller : MonoBehaviour
     /// Checks for required package installations and displays a confirmation dialog if missing.
     /// </summary>
     public static void CheckAndInstall()
+    {
+        CheckAndInstall(false);
+    }
+
+    private static void CheckAndInstall(bool logInstalledPackages)
     {
 #if UNITY_EDITOR
         // 1. Verify existence of Packages/manifest.json
@@ -91,7 +96,10 @@ public class HaonSDEssentialPackageInstaller : MonoBehaviour
         // 4. Exit if all required packages are properly installed
         if (hasToonShader && hasSpringBone)
         {
-            Debug.Log("✅ [HaonSDEssentialPackageInstaller] All required packages (ToonShader, SpringBone) are already installed.");
+            if (logInstalledPackages)
+            {
+                Debug.Log("✅ [HaonSDEssentialPackageInstaller] All required packages (ToonShader, SpringBone) are already installed.");
+            }
             return;
         }
 

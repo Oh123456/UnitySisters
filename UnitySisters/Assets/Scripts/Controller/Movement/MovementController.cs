@@ -8,7 +8,7 @@ namespace UnitySisters.Controller
 {
     [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "", sourceAssembly: "Assembly-CSharp")]
     [System.Serializable]
-    public class MovementController : MonoBehaviour, IModelBinder<MovementModel>
+    public class MovementController : MonoBehaviour, IModelBinder<MovementModel> , IMoveControl
     {
         private enum JumpState
         {
@@ -34,7 +34,6 @@ namespace UnitySisters.Controller
         [Tooltip("코요테 타임 : 점프시 낙하중에 일정기간 점프 가능 여유 시간")]
         [SerializeField] private float coyoteTime = 0.15f;
         [SerializeField] private float jumpBetweenDelay = 0.1f;
-
 
         protected MovementModel movementModel;
         private StatePattern<JumpState> jumpState;
@@ -144,7 +143,6 @@ namespace UnitySisters.Controller
                 if (jumpState.CurrentState == JumpState.Standing)
                 {
                     currentCoyoteTime += Time.deltaTime;
-                    Debug.Log(currentCoyoteTime);
                     if (coyoteTime <= currentCoyoteTime)
                     {
                         SubtractumpCount();
@@ -207,6 +205,19 @@ namespace UnitySisters.Controller
             Gizmos.DrawLine(origin + Vector3.forward * radius, end + Vector3.forward * radius);
             Gizmos.DrawLine(origin - Vector3.forward * radius, end - Vector3.forward * radius);
             Debug.DrawRay(origin, Vector3.down * groundCheckDistance, movementModel.isGrounded ? Color.green : Color.red);
+        }
+
+        public void LockMove()
+        {
+            isMovement = false;
+            ref Vector3 velocity = ref movementModel.refVelocity;
+            velocity.x = 0.0f;
+            velocity.z = 0.0f;
+        }
+
+        public void UnlockMove()
+        {
+            isMovement = true;
         }
     }
 

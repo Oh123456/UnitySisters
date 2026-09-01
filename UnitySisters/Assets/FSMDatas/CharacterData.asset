@@ -28,7 +28,10 @@ MonoBehaviour:
     position: {x: 542, y: -447}
   - id: 3
     name: Falling
-    position: {x: 752, y: -137}
+    position: {x: 866, y: -135}
+  - id: 4
+    name: Attack
+    position: {x: 534, y: 66}
   transitions:
   - fromStateID: 0
     toStateID: 1
@@ -138,6 +141,39 @@ MonoBehaviour:
     priority: 0
     delay: 0
     cancelWhenConditionFails: 0
+    legacyHasCondition: 0
+    legacyConditionID: 0
+    routePoints: []
+  - fromStateID: 1
+    toStateID: 4
+    name: Move To Attack
+    mode: 0
+    conditions: []
+    priority: 0
+    delay: 0
+    cancelWhenConditionFails: 1
+    legacyHasCondition: 0
+    legacyConditionID: 0
+    routePoints: []
+  - fromStateID: 0
+    toStateID: 4
+    name: Idile To Attack
+    mode: 0
+    conditions: []
+    priority: 0
+    delay: 0
+    cancelWhenConditionFails: 1
+    legacyHasCondition: 0
+    legacyConditionID: 0
+    routePoints: []
+  - fromStateID: 4
+    toStateID: 0
+    name: Attack To Idile
+    mode: 0
+    conditions: []
+    priority: 0
+    delay: 0
+    cancelWhenConditionFails: 1
     legacyHasCondition: 0
     legacyConditionID: 0
     routePoints: []

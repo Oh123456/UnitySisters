@@ -2,10 +2,11 @@ using FSM;
 using UnityEngine;
 using UnitySisters.Command;
 using UnitySisters.Controller;
+using UnitySisters.Controller.Interface;
 using UnitySisters.Model;
 
 [RequireComponent(typeof(CharacterController))]
-public class Character : MonoBehaviour
+public class Character : MonoBehaviour , IMoveControl
 {    
     [SerializeField] private Transform carmeraTarget;
     [SerializeField] private Transform characterTarget;
@@ -38,16 +39,15 @@ public class Character : MonoBehaviour
         characterAnimationModel = new CharacterAnimationModel();
 
         animationController.SetModel(characterAnimationModel);
-
-        if (characterFSMCotnroller != null)
-        {
-            characterFSMCotnroller.CreateStateMachine();
-            characterFSMCotnroller.StartStateMachine();
-        }
+        characterFSMCotnroller?.Initialize(this);
     }
 
     public void ExecuteCommand(CharacterCommand command)
     {
+        if (command.isAttackButton)
+        {
+            characterFSMCotnroller.ChangeState((int)CharacterFSMCotnroller.CharacterStateID.Attack);
+        }
         movementController?.Move(command.movementCommand);
     }
 
@@ -106,6 +106,15 @@ public class Character : MonoBehaviour
         movementController?.OnDrawGizmos();
     }
 
+    public void LockMove()
+    {
+        movementController.LockMove();
+    }
+
+    public void UnlockMove()
+    {
+        movementController.UnlockMove();
+    }
 }
 
 //마지막 확인후 안쓰면 삭제

@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &305320679045473327
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 521264810408268623}
+  m_Layer: 0
+  m_Name: hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &521264810408268623
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 305320679045473327}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.526, z: 0.097}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3692879968775000431}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4781553526403261481
 GameObject:
   m_ObjectHideFlags: 0
@@ -45,6 +76,7 @@ GameObject:
   - component: {fileID: 8877441911836399548}
   - component: {fileID: 7871517726820245889}
   - component: {fileID: 2278072537853742993}
+  - component: {fileID: 6854692289672436025}
   m_Layer: 6
   m_Name: SD_Unity_Chan
   m_TagString: Untagged
@@ -161,6 +193,19 @@ MonoBehaviour:
   coyoteTime: 0.3
   jumpBetweenDelay: 0.1
   characterController: {fileID: 2227266558266102254}
+--- !u!114 &6854692289672436025
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8665634975146125619}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9aff0f4adcbb804d8a825bb4356c0c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hitboxStart: {fileID: 521264810408268623}
 --- !u!1001 &453888412758731170
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -209,6 +254,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4343995672746443733, guid: 234a458d2bc9de040834a24c42610268, type: 3}
+      propertyPath: shouldDrawGizmosThisFrame
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4343995673890873660, guid: 234a458d2bc9de040834a24c42610268, type: 3}
+      propertyPath: shouldDrawGizmosThisFrame
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 4483587913382847095, guid: 234a458d2bc9de040834a24c42610268, type: 3}
       propertyPath: m_Name
       value: SD_Unity_Chan
@@ -223,14 +276,38 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 3851483538773457101, guid: 234a458d2bc9de040834a24c42610268, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 521264810408268623}
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4483587913382847095, guid: 234a458d2bc9de040834a24c42610268, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6474936244442402902}
   m_SourcePrefab: {fileID: 100100000, guid: 234a458d2bc9de040834a24c42610268, type: 3}
 --- !u!4 &3692879968775000431 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3851483538773457101, guid: 234a458d2bc9de040834a24c42610268, type: 3}
   m_PrefabInstance: {fileID: 453888412758731170}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &4067997758698359765 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4483587913382847095, guid: 234a458d2bc9de040834a24c42610268, type: 3}
+  m_PrefabInstance: {fileID: 453888412758731170}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6474936244442402902
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4067997758698359765}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2f88d3051fdfec40965412058ca05be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  controlObject: {fileID: 8665634975146125619}
 --- !u!95 &7340746517562559253 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 7175108369142178487, guid: 234a458d2bc9de040834a24c42610268, type: 3}
