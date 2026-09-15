@@ -17,6 +17,8 @@ namespace UnityFramework.Animation
         {
             animationEventReceiver = animator.gameObject.GetComponent<AnimationEventReceiver>();
             animationEventCommands = eventData.Events;
+
+            animationEventReceiver?.NotifyAnimationStarted(new AnimationStateEventContext(animator, eventData));
         }
 
         public override void OnStateUpdate(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
@@ -95,6 +97,7 @@ namespace UnityFramework.Animation
                 command.ContinuousEventExit(animationEventReceiver);
 
             }
+            animationEventReceiver?.NotifyAnimationEnded(new AnimationStateEventContext(animator, eventData));
             animationEventReceiver = null;
             animationEventCommands = null;
             ResetTrigger();
