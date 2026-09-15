@@ -17,7 +17,7 @@ MonoBehaviour:
   distance: 0
   layerMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 128
   hitBoxType: 1
   radius: 0
   boxSize: {x: 0.42, y: 0.41, z: 0.32}

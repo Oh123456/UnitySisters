@@ -15,6 +15,10 @@ public class AttackDataScriptableObject : ScriptableObject
     [SerializeField] private float distance = 0.0f;
     [SerializeField] private LayerMask layerMask;
     [SerializeField] private HitBoxType hitBoxType = HitBoxType.Box;
+    [SerializeField, Min(1)] private int maxTargets = 1;
+    [SerializeField, Min(1)] private int hitCount = 1;
+    [SerializeField, Min(0.01f)] private float hitInterval = 0.1f;
+
     // 구체
     [SerializeField] private float radius;
 
@@ -34,5 +38,8 @@ public class AttackDataScriptableObject : ScriptableObject
     public float Radius => radius;
     public Vector3 BoxSize => boxSize;
     public LayerMask LayerMask => layerMask;
+    public int MaxTargets => maxTargets;
+    public int HitCount => hitCount;
+    public float HitInterval => hitInterval;
 
 }

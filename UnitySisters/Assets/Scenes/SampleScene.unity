@@ -552,7 +552,8 @@ GameObject:
   - component: {fileID: 1219731813}
   - component: {fileID: 1219731812}
   - component: {fileID: 1219731811}
-  m_Layer: 0
+  - component: {fileID: 1219731816}
+  m_Layer: 7
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -675,6 +676,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1219731816
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1219731810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ca0897fcb2f5224b9654fd56b7ad32f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  battleAttributeSet:
+    rid: -2
+  hitResolver:
+    rid: -2
+  hitScanComponent: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
 --- !u!114 &1667486595 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8078225801454872735, guid: 9a89893f6e7efcf449a10236599fa717, type: 3}

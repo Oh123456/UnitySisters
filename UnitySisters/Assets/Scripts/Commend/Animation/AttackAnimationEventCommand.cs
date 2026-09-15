@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityFramework.Animation;
-using UnitySisters.Controller;
+using UnityFramework.BattleSystem;
 
 namespace UnitySisters
-{
+{   
     public struct AttackAnimationEventContext
     {
         public string attackKey;
@@ -16,11 +16,11 @@ namespace UnitySisters
 
         public override void Execute(AnimationEventReceiver animationEventReceiver)
         {
-            IAttackController attackController = animationEventReceiver.GetInterface<IAttackController>();
-            if (attackController == null)
+            IAttackAble attackAble = animationEventReceiver.GetInterface<IAttackAble>();
+            if (attackAble == null)
                 return;
 
-            attackController.Attack(new AttackAnimationEventContext()
+            attackAble.Attack(new AttackAnimationEventContext()
             {
                 attackKey = attackKey,
             });

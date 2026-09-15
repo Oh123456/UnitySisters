@@ -1,19 +1,18 @@
-/*
 using System.Collections.Generic;
 
 using UnityEditor;
 using UnityEngine;
-using UnitySisters.Controller;
+using UnitySisters;
 
-[CustomEditor(typeof(AttackController))]
-public sealed class AttackControllerEditor : Editor
+[CustomEditor(typeof(DefaultHitScanComponent))]
+public sealed class DefaultHitScanComponentEditor : Editor
 {
     private static readonly Dictionary<int, AttackDataScriptableObject> DebugDataByTarget = new Dictionary<int, AttackDataScriptableObject>();
     private static readonly Dictionary<int, bool> ShowHitboxByTarget = new Dictionary<int, bool>();
 
-    private SerializedProperty hitboxStartProperty;
+    private SerializedProperty hitScanOriginProperty;
 
-    static AttackControllerEditor()
+    static DefaultHitScanComponentEditor()
     {
         SceneView.duringSceneGui -= DrawSelectedChildHitboxes;
         SceneView.duringSceneGui += DrawSelectedChildHitboxes;
@@ -23,14 +22,17 @@ public sealed class AttackControllerEditor : Editor
 
     private void OnEnable()
     {
-        hitboxStartProperty = serializedObject.FindProperty("hitboxStart");
+        hitScanOriginProperty = serializedObject.FindProperty("hitScanOrigin");
     }
 
     public override void OnInspectorGUI()
     {
         serializedObject.Update();
 
-        EditorGUILayout.PropertyField(hitboxStartProperty);
+        if (hitScanOriginProperty != null)
+        {
+            EditorGUILayout.PropertyField(hitScanOriginProperty);
+        }
 
         int targetId = target.GetInstanceID();
         bool showHitbox = ShowHitboxByTarget.TryGetValue(targetId, out bool storedShowHitbox) && storedShowHitbox;
@@ -54,13 +56,13 @@ public sealed class AttackControllerEditor : Editor
 
     private void OnSceneGUI()
     {
-        DrawDebugHitbox((AttackController)target, hitboxStartProperty.objectReferenceValue as Transform);
+        DrawDebugHitbox((DefaultHitScanComponent)target, hitScanOriginProperty?.objectReferenceValue as Transform);
     }
 
     private static void DrawSelectedChildHitboxes(SceneView sceneView)
     {
         Transform[] selectedTransforms = Selection.transforms;
-        HashSet<int> drawnControllerIds = new HashSet<int>();
+        HashSet<int> drawnComponentIds = new HashSet<int>();
         for (int i = 0; i < selectedTransforms.Length; i++)
         {
             Transform selectedTransform = selectedTransforms[i];
@@ -69,18 +71,18 @@ public sealed class AttackControllerEditor : Editor
                 continue;
             }
 
-            AttackController controller = selectedTransform.GetComponentInParent<AttackController>();
-            if (controller == null || controller.transform == selectedTransform)
+            DefaultHitScanComponent component = selectedTransform.GetComponentInParent<DefaultHitScanComponent>();
+            if (component == null || component.transform == selectedTransform)
             {
                 continue;
             }
 
-            if (!drawnControllerIds.Add(controller.GetInstanceID()))
+            if (!drawnComponentIds.Add(component.GetInstanceID()))
             {
                 continue;
             }
 
-            DrawDebugHitbox(controller, GetHitboxStart(controller));
+            DrawDebugHitbox(component, GetHitScanOrigin(component));
         }
     }
 
@@ -89,21 +91,21 @@ public sealed class AttackControllerEditor : Editor
         SceneView.RepaintAll();
     }
 
-    private static Transform GetHitboxStart(AttackController controller)
+    private static Transform GetHitScanOrigin(DefaultHitScanComponent component)
     {
-        SerializedObject serializedController = new SerializedObject(controller);
-        SerializedProperty hitboxStartProperty = serializedController.FindProperty("hitboxStart");
-        return hitboxStartProperty?.objectReferenceValue as Transform;
+        SerializedObject serializedComponent = new SerializedObject(component);
+        SerializedProperty originProperty = serializedComponent.FindProperty("hitScanOrigin");
+        return originProperty?.objectReferenceValue as Transform;
     }
 
-    private static void DrawDebugHitbox(AttackController controller, Transform hitboxStart)
+    private static void DrawDebugHitbox(DefaultHitScanComponent component, Transform hitScanOrigin)
     {
-        if (controller == null)
+        if (component == null)
         {
             return;
         }
 
-        int targetId = controller.GetInstanceID();
+        int targetId = component.GetInstanceID();
         if (!ShowHitboxByTarget.TryGetValue(targetId, out bool showHitbox) || !showHitbox)
         {
             return;
@@ -114,14 +116,14 @@ public sealed class AttackControllerEditor : Editor
             return;
         }
 
-        if (hitboxStart == null)
+        if (hitScanOrigin == null)
         {
             return;
         }
 
-        Vector3 origin = hitboxStart.TransformPoint(data.Offset);
-        Vector3 direction = hitboxStart.forward;
-        Quaternion rotation = hitboxStart.rotation;
+        Vector3 origin = hitScanOrigin.TransformPoint(data.Offset);
+        Vector3 direction = hitScanOrigin.forward;
+        Quaternion rotation = hitScanOrigin.rotation;
         float length = Mathf.Max(0.0f, data.Length);
 
         Handles.color = new Color(1.0f, 0.35f, 0.1f, 0.95f);
@@ -207,4 +209,3 @@ public sealed class AttackControllerEditor : Editor
         };
     }
 }
-*/

@@ -1,9 +1,10 @@
 using UnityEngine;
 using UnityFramework.FSM;
+using UnitySisters.FSM;
 
 namespace FSM
 {
-    public abstract class FSMController : MonoBehaviour
+    public abstract class FSMController : MonoBehaviour , IFSMController
     {
         [SerializeField] protected FSMData fsmData;
         protected StateMachine stateMachine;
@@ -84,6 +85,7 @@ namespace FSM
         protected abstract State CreateState(FSMStateData stateData);
 
         protected abstract System.Func<IStateMachine, bool> CreateCondition(int conditionID);
+        public abstract void SetDefaultState();
     }
 
 }

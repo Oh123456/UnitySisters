@@ -76,7 +76,8 @@ GameObject:
   - component: {fileID: 8877441911836399548}
   - component: {fileID: 7871517726820245889}
   - component: {fileID: 2278072537853742993}
-  - component: {fileID: 6854692289672436025}
+  - component: {fileID: 534596780136050508}
+  - component: {fileID: 4531831230527742685}
   m_Layer: 6
   m_Name: SD_Unity_Chan
   m_TagString: Untagged
@@ -193,7 +194,7 @@ MonoBehaviour:
   coyoteTime: 0.3
   jumpBetweenDelay: 0.1
   characterController: {fileID: 2227266558266102254}
---- !u!114 &6854692289672436025
+--- !u!114 &534596780136050508
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -202,10 +203,32 @@ MonoBehaviour:
   m_GameObject: {fileID: 8665634975146125619}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c9aff0f4adcbb804d8a825bb4356c0c0, type: 3}
+  m_Script: {fileID: 11500000, guid: 6f3240bb4e8d03f42a0e163049c57e06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hitboxStart: {fileID: 521264810408268623}
+  hitScanOrigin: {fileID: 521264810408268623}
+--- !u!114 &4531831230527742685
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8665634975146125619}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ca0897fcb2f5224b9654fd56b7ad32f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  battleAttributeSet:
+    rid: -2
+  hitResolver:
+    rid: -2
+  hitScanComponent: {fileID: 534596780136050508}
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
 --- !u!1001 &453888412758731170
 PrefabInstance:
   m_ObjectHideFlags: 0

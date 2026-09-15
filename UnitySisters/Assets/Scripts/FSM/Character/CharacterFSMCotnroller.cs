@@ -88,6 +88,11 @@ namespace FSM
         {
             return this.characterFSMModel as IFSMParameterBinder;
         }
+
+        public override void SetDefaultState()
+        {
+            stateMachine.ChangeState((int)CharacterStateID.Idile);
+        }
     }
 
 }

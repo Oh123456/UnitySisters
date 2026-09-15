@@ -3,67 +3,46 @@ using UnityEditor;
 [CustomEditor(typeof(AttackDataScriptableObject))]
 public sealed class AttackDataScriptableObjectEditor : Editor
 {
-    private SerializedProperty keyProperty;
-    private SerializedProperty offsetProperty;
-    private SerializedProperty distanceProperty;
-    private SerializedProperty hitBoxTypeProperty;
-    private SerializedProperty layerMaskProperty;
-    private SerializedProperty radiusProperty;
-    private SerializedProperty boxSizeProperty;
-    private SerializedProperty lengthProperty;
-
-    private void OnEnable()
-    {
-        keyProperty = serializedObject.FindProperty("key");
-        offsetProperty = serializedObject.FindProperty("offset");
-        distanceProperty = serializedObject.FindProperty("distance");
-        hitBoxTypeProperty = serializedObject.FindProperty("hitBoxType");
-        layerMaskProperty = serializedObject.FindProperty("layerMask");
-        radiusProperty = serializedObject.FindProperty("radius");
-        boxSizeProperty = serializedObject.FindProperty("boxSize");
-        lengthProperty = serializedObject.FindProperty("length");
-    }
-
     public override void OnInspectorGUI()
     {
         serializedObject.Update();
 
-        DrawProperty(keyProperty);
-        DrawProperty(offsetProperty);
-        DrawProperty(distanceProperty);
-        DrawProperty(hitBoxTypeProperty);
-        DrawProperty(layerMaskProperty);
-        DrawProperty(lengthProperty);
-
-        if (hitBoxTypeProperty == null)
+        SerializedProperty hitBoxTypeProperty = serializedObject.FindProperty("hitBoxType");
+        SerializedProperty property = serializedObject.GetIterator();
+        bool enterChildren = true;
+        while (property.NextVisible(enterChildren))
         {
-            serializedObject.ApplyModifiedProperties();
-            return;
-        }
+            enterChildren = false;
+            if (!ShouldDrawProperty(property, hitBoxTypeProperty))
+            {
+                continue;
+            }
 
-        HitBoxType hitBoxType = (HitBoxType)hitBoxTypeProperty.enumValueIndex;
-        switch (hitBoxType)
-        {
-            case HitBoxType.Line:
-                break;
-
-            case HitBoxType.Box:
-                DrawProperty(boxSizeProperty);
-                break;
-
-            case HitBoxType.Sphere:
-                DrawProperty(radiusProperty);
-                break;
+            using (new EditorGUI.DisabledScope(property.propertyPath == "m_Script"))
+            {
+                EditorGUILayout.PropertyField(property, true);
+            }
         }
 
         serializedObject.ApplyModifiedProperties();
     }
 
-    private static void DrawProperty(SerializedProperty property)
+    private static bool ShouldDrawProperty(SerializedProperty property, SerializedProperty hitBoxTypeProperty)
     {
-        if (property != null)
+        if (hitBoxTypeProperty == null)
         {
-            EditorGUILayout.PropertyField(property);
+            return true;
+        }
+
+        HitBoxType hitBoxType = (HitBoxType)hitBoxTypeProperty.intValue;
+        switch (property.propertyPath)
+        {
+            case "boxSize":
+                return hitBoxType == HitBoxType.Box;
+            case "radius":
+                return hitBoxType == HitBoxType.Sphere;
+            default:
+                return true;
         }
     }
 }
