@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnitySisters.Manager;
 
 public class GameManager : MonoBehaviour
 {
@@ -7,6 +9,8 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+
+        DataManager.Instance.LoadDatas();
         player.ConnectCharacter(testCharacter);
 
     }

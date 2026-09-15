@@ -6,7 +6,7 @@ using UnitySisters.Controller.Interface;
 using UnitySisters.Model;
 
 [RequireComponent(typeof(CharacterController))]
-public class Character : MonoBehaviour , IMoveControl
+public class Character : MonoBehaviour
 {    
     [SerializeField] private Transform carmeraTarget;
     [SerializeField] private Transform characterTarget;
@@ -18,7 +18,7 @@ public class Character : MonoBehaviour , IMoveControl
     [SerializeField] private MovementController movementController;
 
     [Header("FMS")]
-    [SerializeField] CharacterFSMCotnroller characterFSMCotnroller;
+    [SerializeField] private CharacterFSMCotnroller characterFSMCotnroller;
 
     private MovementModel movementModel = null;
     private CharacterAnimationModel characterAnimationModel = null;
@@ -45,9 +45,7 @@ public class Character : MonoBehaviour , IMoveControl
     public void ExecuteCommand(CharacterCommand command)
     {
         if (command.isAttackButton)
-        {
             characterFSMCotnroller.ChangeState((int)CharacterFSMCotnroller.CharacterStateID.Attack);
-        }
         movementController?.Move(command.movementCommand);
     }
 
@@ -104,16 +102,6 @@ public class Character : MonoBehaviour , IMoveControl
     private void OnDrawGizmos()
     {
         movementController?.OnDrawGizmos();
-    }
-
-    public void LockMove()
-    {
-        movementController.LockMove();
-    }
-
-    public void UnlockMove()
-    {
-        movementController.UnlockMove();
     }
 }
 
