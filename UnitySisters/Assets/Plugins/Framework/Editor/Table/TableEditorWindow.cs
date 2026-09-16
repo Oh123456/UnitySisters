@@ -403,11 +403,33 @@ namespace UnityFramework.Table.Editor
                 return;
             }
 
+            bool editableInline = binding.Descriptor.EditableInline;
+            if (binding.Descriptor.ShowFirstSerializedValue)
+            {
+                SerializedProperty firstValue = FindFirstSerializedValueProperty(
+                    binding.Asset,
+                    property);
+                if (firstValue == null)
+                {
+                    Rect summaryRect = GUILayoutUtility.GetRect(
+                        1.0f,
+                        EditorGUIUtility.singleLineHeight,
+                        GUILayout.ExpandWidth(true));
+                    summaryRect.xMin += 2.0f;
+                    summaryRect.xMax -= 2.0f;
+                    EditorGUI.LabelField(summaryRect, GetPropertySummary(property), EditorStyles.miniLabel);
+                    return;
+                }
+
+                property = firstValue;
+                editableInline = IsInlineEditable(property);
+            }
+
             Rect rect = GUILayoutUtility.GetRect(1.0f, EditorGUIUtility.singleLineHeight, GUILayout.ExpandWidth(true));
             rect.xMin += 2.0f;
             rect.xMax -= 2.0f;
 
-            if (!binding.Descriptor.EditableInline)
+            if (!editableInline)
             {
                 EditorGUI.LabelField(rect, GetPropertySummary(property), EditorStyles.miniLabel);
                 return;
@@ -745,14 +767,175 @@ namespace UnityFramework.Table.Editor
                     continue;
                 }
 
+                bool showFirstSerializedValue = IsSerializedClassProperty(asset, iterator);
+                SerializedProperty displayedProperty = showFirstSerializedValue
+                    ? FindFirstSerializedValueProperty(asset, iterator)
+                    : null;
+
                 properties.Add(new PropertyDescriptor(
                     iterator.propertyPath,
                     iterator.displayName,
-                    iterator.propertyType,
-                    IsInlineEditable(iterator)));
+                    displayedProperty?.propertyType ?? iterator.propertyType,
+                    displayedProperty != null
+                        ? IsInlineEditable(displayedProperty)
+                        : IsInlineEditable(iterator),
+                    showFirstSerializedValue));
             }
 
             return properties;
+        }
+
+        private static bool IsSerializedClassProperty(
+            ScriptableObject asset,
+            SerializedProperty property)
+        {
+            if (property.isArray && property.propertyType != SerializedPropertyType.String)
+            {
+                return false;
+            }
+
+            if (property.propertyType != SerializedPropertyType.Generic &&
+                property.propertyType != SerializedPropertyType.ManagedReference)
+            {
+                return false;
+            }
+
+            Type fieldType = GetPropertyFieldType(asset.GetType(), property.propertyPath);
+            if (fieldType == null || fieldType == typeof(string) ||
+                typeof(UnityEngine.Object).IsAssignableFrom(fieldType))
+            {
+                return false;
+            }
+
+            return fieldType.IsClass || property.propertyType == SerializedPropertyType.ManagedReference;
+        }
+
+        private static SerializedProperty FindFirstSerializedValueProperty(
+            ScriptableObject asset,
+            SerializedProperty parent)
+        {
+            if (parent == null || (parent.isArray && parent.propertyType != SerializedPropertyType.String))
+            {
+                return null;
+            }
+
+            Type parentType = GetPropertyFieldType(asset.GetType(), parent.propertyPath);
+            if (parent.propertyType == SerializedPropertyType.ManagedReference &&
+                parent.managedReferenceValue != null)
+            {
+                parentType = parent.managedReferenceValue.GetType();
+            }
+
+            if (parentType == null)
+            {
+                return null;
+            }
+
+            SerializedProperty iterator = parent.Copy();
+            SerializedProperty end = iterator.GetEndProperty();
+            Dictionary<int, Type> declaringTypesByDepth = new Dictionary<int, Type>
+            {
+                [parent.depth + 1] = parentType,
+            };
+            bool enterChildren = true;
+            while (iterator.NextVisible(enterChildren) && !SerializedProperty.EqualContents(iterator, end))
+            {
+                enterChildren = false;
+                if (!declaringTypesByDepth.TryGetValue(iterator.depth, out Type declaringType))
+                {
+                    continue;
+                }
+
+                FieldInfo field = FindInstanceField(declaringType, iterator.name);
+                if (field == null)
+                {
+                    continue;
+                }
+
+                Type fieldType = field.FieldType;
+                if (fieldType.IsValueType || fieldType == typeof(string))
+                {
+                    return iterator.Copy();
+                }
+
+                if (fieldType != null &&
+                    fieldType.IsClass &&
+                    fieldType != typeof(string) &&
+                    !typeof(UnityEngine.Object).IsAssignableFrom(fieldType) &&
+                    !(iterator.isArray && iterator.propertyType != SerializedPropertyType.String))
+                {
+                    Type childType = iterator.propertyType == SerializedPropertyType.ManagedReference &&
+                        iterator.managedReferenceValue != null
+                            ? iterator.managedReferenceValue.GetType()
+                            : fieldType;
+                    declaringTypesByDepth[iterator.depth + 1] = childType;
+                    enterChildren = true;
+                }
+            }
+
+            return null;
+        }
+
+        private static Type GetPropertyFieldType(Type rootType, string propertyPath)
+        {
+            Type currentType = rootType;
+            string[] pathParts = propertyPath.Split('.');
+            for (int i = 0; i < pathParts.Length; i++)
+            {
+                if (pathParts[i] == "Array")
+                {
+                    i++;
+                    currentType = GetCollectionElementType(currentType);
+                    if (currentType == null)
+                    {
+                        return null;
+                    }
+                    continue;
+                }
+
+                FieldInfo field = FindInstanceField(currentType, pathParts[i]);
+                if (field == null)
+                {
+                    return null;
+                }
+
+                currentType = field.FieldType;
+            }
+
+            return currentType;
+        }
+
+        private static FieldInfo FindInstanceField(Type type, string fieldName)
+        {
+            while (type != null)
+            {
+                FieldInfo field = type.GetField(
+                    fieldName,
+                    BindingFlags.Instance |
+                    BindingFlags.Public |
+                    BindingFlags.NonPublic |
+                    BindingFlags.DeclaredOnly);
+                if (field != null)
+                {
+                    return field;
+                }
+
+                type = type.BaseType;
+            }
+
+            return null;
+        }
+
+        private static Type GetCollectionElementType(Type collectionType)
+        {
+            if (collectionType.IsArray)
+            {
+                return collectionType.GetElementType();
+            }
+
+            return collectionType.IsGenericType
+                ? collectionType.GetGenericArguments().FirstOrDefault()
+                : null;
         }
 
         private static bool IsInlineEditable(SerializedProperty property)
@@ -908,18 +1091,25 @@ namespace UnityFramework.Table.Editor
 
         private sealed class PropertyDescriptor
         {
-            internal PropertyDescriptor(string path, string displayName, SerializedPropertyType propertyType, bool editableInline)
+            internal PropertyDescriptor(
+                string path,
+                string displayName,
+                SerializedPropertyType propertyType,
+                bool editableInline,
+                bool showFirstSerializedValue)
             {
                 Path = path;
                 DisplayName = displayName;
                 PropertyType = propertyType;
                 EditableInline = editableInline;
+                ShowFirstSerializedValue = showFirstSerializedValue;
             }
 
             internal string Path { get; }
             internal string DisplayName { get; }
             internal SerializedPropertyType PropertyType { get; }
             internal bool EditableInline { get; }
+            internal bool ShowFirstSerializedValue { get; }
         }
 
         private sealed class CellBinding
