@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: acf20bc81d765b242aa6aa382e2ab3fd, type: 3}
-  m_Name: Character_FistAttackData
+  m_Name: Character_Attack_Test3
   m_EditorClassIdentifier: 
-  key: FistAttack
-  offset: {x: 0, y: 0, z: 0.25}
+  key: 3
+  offset: {x: 0, y: 0, z: 0}
   distance: 0
   layerMask:
     serializedVersion: 2
-    m_Bits: 128
-  hitBoxType: 1
+    m_Bits: 0
+  hitBoxType: 2
   maxTargets: 1
   hitCount: 1
   hitInterval: 0.1
   radius: 0
-  boxSize: {x: 0.42, y: 0.41, z: 0.32}
-  length: 0
+  boxSize: {x: 1, y: 1, z: 1}
+  length: 1

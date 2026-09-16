@@ -10,6 +10,7 @@ namespace UnitySisters
     }
 
     [System.Serializable]
+    [AnimationEventCommandType(AnimationEventCommandType.Trigger)]
     public class AttackAnimationEventCommand : AnimationEventCommand
     {
         [SerializeField,AttackDataKey] private string attackKey;

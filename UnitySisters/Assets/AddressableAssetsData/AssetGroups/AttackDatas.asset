@@ -21,14 +21,20 @@ MonoBehaviour:
     m_SerializedLabels:
     - AttackData
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3fae69dfd6cc8aa40ab9883aa17376b6
+    m_Address: Assets/Datas/AttackDatas/Character_FistAttackData.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - AttackData
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c374970c54bbd2e4fb7a579d94b49152
     m_Address: Assets/Datas/AttackDatas/Character_AttackData_Test2.asset
     m_ReadOnly: 0
     m_SerializedLabels:
     - AttackData
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: c7cdc27d57b4dab4cad84080bcbc5610
-    m_Address: Assets/Datas/AttackDatas
+  - m_GUID: e9730e79727c5b74fbbf1117b4a99725
+    m_Address: Assets/Datas/AttackDatas/Character_Attack_Test3.asset
     m_ReadOnly: 0
     m_SerializedLabels:
     - AttackData

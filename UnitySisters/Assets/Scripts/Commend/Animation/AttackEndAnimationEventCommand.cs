@@ -5,6 +5,7 @@ using UnitySisters.FSM;
 namespace UnitySisters
 {
     [System.Serializable]
+    [AnimationEventCommandType(AnimationEventCommandType.Trigger)]
     public class AttackEndAnimationEventCommand : AnimationEventCommand
     {
         public override void Execute(AnimationEventReceiver animationEventReceiver)

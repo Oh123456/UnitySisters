@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityFramework.Animation;
 
 [System.Serializable]
-[AnimationEventCommandType(AnimationEventCommandType.Trigger)]
+[AnimationEventCommandType(AnimationEventCommandType.Continuous)]
 public class #SCRIPTNAME# : AnimationEventCommand
 {
     public override void Execute(AnimationEventReceiver animationEventReceiver)
