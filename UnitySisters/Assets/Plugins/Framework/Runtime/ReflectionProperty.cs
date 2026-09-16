@@ -2,8 +2,10 @@ using System;
 namespace UnityFramework
 {
 
+    [System.Serializable]
     public class ReflectionProperty<T> where T : IEquatable<T>
     {
+        [UnityEngine.SerializeField]
         private T value;
         public event Action<T> OnChanged;
 
@@ -34,7 +36,7 @@ namespace UnityFramework
         public void ClearData()
         {
             value = default(T);
-        }
+        }        
 
         public static implicit operator T(ReflectionProperty<T> property)
         {

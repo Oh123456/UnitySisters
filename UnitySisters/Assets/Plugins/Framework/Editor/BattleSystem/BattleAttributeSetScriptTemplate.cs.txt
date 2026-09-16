@@ -1,0 +1,6 @@
+using UnityFramework.BattleSystem;
+
+[System.Serializable]
+public class #SCRIPTNAME# : BattleAttributeSet
+{
+}
