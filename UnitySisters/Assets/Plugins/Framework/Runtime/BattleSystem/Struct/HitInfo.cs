@@ -4,6 +4,6 @@ namespace UnityFramework.BattleSystem
 {
     public struct HitInfo
     {
-        public GameObject hitObject;
+        public BattleComponent hitBattleComponent;        
     } 
 }

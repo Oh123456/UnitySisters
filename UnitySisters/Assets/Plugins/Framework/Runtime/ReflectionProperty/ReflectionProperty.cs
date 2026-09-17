@@ -3,7 +3,8 @@ namespace UnityFramework
 {
 
     [System.Serializable]
-    public class ReflectionProperty<T> where T : IEquatable<T>
+    public class ReflectionProperty<T> : IReadOnlyReflectionProperty<T>
+        where T : IEquatable<T> 
     {
         [UnityEngine.SerializeField]
         private T value;
@@ -31,11 +32,14 @@ namespace UnityFramework
         }
 
         /// <summary>
-        /// 데이터 초기화 리플렉션 발생 x
+        /// 데이터 초기화
         /// </summary>
-        public void ClearData()
+        /// <param name="isReflection">리플렉션 여부</param>
+        public void ClearData(bool isReflection = false)
         {
             value = default(T);
+            if (isReflection)
+                OnChanged?.Invoke(value);
         }        
 
         public static implicit operator T(ReflectionProperty<T> property)

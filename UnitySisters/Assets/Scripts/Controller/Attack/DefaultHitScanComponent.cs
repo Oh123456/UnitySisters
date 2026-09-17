@@ -8,13 +8,18 @@ namespace UnitySisters
 {
     public class DefaultHitScanComponent : HitScanComponent<AttackAnimationEventContext>
     {
-        public override void StartHitScan(in AttackAnimationEventContext hitScanData)
+        public override void StartHitScan(in AttackAnimationEventContext hitScanData, BattleComponent soureBattleComponent)
         {
             if (!DataManager.Instance.TryGetAttackData(hitScanData.attackKey, out var data))
                 return;
             int maxTargets = data.MaxTargets;
 
             RaycastHit[] raycastHits = ArrayPool<RaycastHit>.Shared.Rent(maxTargets);
+            HitInfo hitInfo = new HitInfo()
+            {
+                hitBattleComponent = soureBattleComponent,
+            };
+
 
             try
             {
@@ -26,10 +31,7 @@ namespace UnitySisters
                     if (hitAble == null)
                         continue;
 
-                    DefaultHitResult hitResult = hitAble.Hit<DefaultHitResult>(new HitInfo()
-                    {
-                        hitObject = transform.gameObject,
-                    });
+                    DefaultHitResult hitResult = hitAble.Hit<DefaultHitResult>(hitInfo);
 
                     if (hitResult.HasHitError())
                         continue;

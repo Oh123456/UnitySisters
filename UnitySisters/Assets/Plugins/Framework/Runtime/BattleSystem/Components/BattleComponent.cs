@@ -10,18 +10,25 @@ namespace UnityFramework.BattleSystem
         [SerializeReference, SerializeReferenceSelector] protected HitResolver hitResolver;
         [SerializeField] protected HitScanComponent hitScanComponent;
 
-        public BattleAttributeSet BattleAttributeSet => battleAttributeSet;
+        public BattleAttributeSet BattleAttributeSet
+        {
+            set
+            {
+                if (value == null || value == battleAttributeSet)
+                    return;
+                battleAttributeSet = value;
+            }
+            get
+            {
+                return battleAttributeSet;
+            }
+        }        
+
         public T GetBattleAttributeSet<T>() where T : BattleAttributeSet => battleAttributeSet as T;
 
         public virtual void Attack<TAttackData>(in TAttackData attackData) where TAttackData : struct
         {
-            if (hitScanComponent is IHitScaner<TAttackData> hitScaner)
-            {
-                hitScaner.StartHitScan(in attackData);
-                return;
-            }
-
-            throw new InvalidOperationException($"{hitScanComponent.GetType().Name} cannot handle {typeof(TAttackData).Name}");            
+            hitScanComponent.StartHitScan<TAttackData>(in attackData, this);
         }
 
         public THitResult Hit<THitResult>(in HitInfo hitInfo) where THitResult : struct , IHitResult
@@ -33,7 +40,7 @@ namespace UnityFramework.BattleSystem
                 return HitError<THitResult>(in hitInfo, (int)HitErrorCode.NoneHitResolver);
             }
 
-            return hitResolver.Hit<THitResult>(in hitInfo);
+            return hitResolver.Hit<THitResult>(in hitInfo, this);
         }
 
         protected THitResult HitError<THitResult>(in HitInfo hitInfo, int errorCode) where THitResult : struct, IHitResult

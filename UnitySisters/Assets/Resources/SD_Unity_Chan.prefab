@@ -170,6 +170,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   animator: {fileID: 7340746517562559253}
+  animationEventReceiver: {fileID: 0}
 --- !u!114 &2278072537853742993
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -222,13 +223,16 @@ MonoBehaviour:
   battleAttributeSet:
     rid: -2
   hitResolver:
-    rid: -2
+    rid: 2726199888713089100
   hitScanComponent: {fileID: 534596780136050508}
   references:
     version: 2
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
+    - rid: 2726199888713089100
+      type: {class: DefaultHitResolver, ns: UnitySisters.BattleSystem, asm: Assembly-CSharp}
+      data: 
 --- !u!1001 &453888412758731170
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -307,6 +311,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 4483587913382847095, guid: 234a458d2bc9de040834a24c42610268, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6474936244442402902}
+    - targetCorrespondingSourceObject: {fileID: 4483587913382847095, guid: 234a458d2bc9de040834a24c42610268, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3528714536473452731}
   m_SourcePrefab: {fileID: 100100000, guid: 234a458d2bc9de040834a24c42610268, type: 3}
 --- !u!4 &3692879968775000431 stripped
 Transform:
@@ -331,6 +338,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   controlObject: {fileID: 8665634975146125619}
+--- !u!114 &3528714536473452731
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4067997758698359765}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 158967fb1984b7149818295cdf38a6a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterController: {fileID: 2227266558266102254}
 --- !u!95 &7340746517562559253 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 7175108369142178487, guid: 234a458d2bc9de040834a24c42610268, type: 3}

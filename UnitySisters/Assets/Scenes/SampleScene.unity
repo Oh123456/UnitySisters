@@ -135,6 +135,17 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 5869419725294115197, guid: 9a89893f6e7efcf449a10236599fa717, type: 3}
   m_PrefabInstance: {fileID: 1711193015}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &259370057 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4531831230527742685, guid: ddacdc7eb63ee7140b152d49b50f789e, type: 3}
+  m_PrefabInstance: {fileID: 589076321}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ca0897fcb2f5224b9654fd56b7ad32f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &589076321
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -553,6 +564,7 @@ GameObject:
   - component: {fileID: 1219731812}
   - component: {fileID: 1219731811}
   - component: {fileID: 1219731816}
+  - component: {fileID: 1219731817}
   m_Layer: 7
   m_Name: Cube
   m_TagString: Untagged
@@ -691,13 +703,31 @@ MonoBehaviour:
   battleAttributeSet:
     rid: -2
   hitResolver:
-    rid: -2
+    rid: 2726199888713089101
   hitScanComponent: {fileID: 0}
   references:
     version: 2
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
+    - rid: 2726199888713089101
+      type: {class: DefaultHitResolver, ns: UnitySisters.BattleSystem, asm: Assembly-CSharp}
+      data: 
+--- !u!114 &1219731817
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1219731810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a903d199caa71c429a2626a778a6474, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  battleComponent: {fileID: 1219731816}
+  characterData: {fileID: 11400000, guid: e06d7964ed82d964da486229e8f77538, type: 2}
+  test2: {fileID: 259370057}
 --- !u!114 &1667486595 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8078225801454872735, guid: 9a89893f6e7efcf449a10236599fa717, type: 3}
