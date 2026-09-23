@@ -81,6 +81,7 @@ namespace UnityFramework.BattleSystem
             return buffState != null;
         }
 
+        //만약 같은거 여러개 건들이면 리플렉션이 반복할겨 방법 구상
         public void StackChanged()
         {
             buffState.StackChanged(this);
