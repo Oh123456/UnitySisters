@@ -1,0 +1,4 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Style src="project://database/Assets/Plugins/Framework/Editor/BattleSystem/BuffMonitor/BuffMonitorWindow.uss" />
+    <ui:VisualElement name="windowRoot" class="buff-monitor-root" />
+</ui:UXML>

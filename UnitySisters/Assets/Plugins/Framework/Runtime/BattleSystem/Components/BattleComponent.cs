@@ -9,6 +9,7 @@ namespace UnityFramework.BattleSystem
         [SerializeReference, SerializeReferenceSelector] protected BattleAttributeSet battleAttributeSet;
         [SerializeReference, SerializeReferenceSelector] protected HitResolver hitResolver;
         [SerializeField] protected HitScanComponent hitScanComponent;
+        protected BuffContainer buffContainer;
 
         public BattleAttributeSet BattleAttributeSet
         {
@@ -22,7 +23,20 @@ namespace UnityFramework.BattleSystem
             {
                 return battleAttributeSet;
             }
-        }        
+        }
+
+        public IBuffContainer BuffContainer => buffContainer;
+
+        protected virtual void Awake()
+        {
+            buffContainer = new BuffContainer();
+            buffContainer.SetBattleAttributeSet(battleAttributeSet);
+        }
+
+        private void Update()
+        {
+            buffContainer?.Update();
+        }
 
         public T GetBattleAttributeSet<T>() where T : BattleAttributeSet => battleAttributeSet as T;
 

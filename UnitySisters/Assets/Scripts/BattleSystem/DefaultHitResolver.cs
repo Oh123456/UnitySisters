@@ -5,7 +5,7 @@ namespace UnitySisters.BattleSystem
 {
     [System.Serializable]
     public class DefaultHitResolver : HitResolver<DefaultHitResult>
-    {
+    {        
         public override DefaultHitResult Hit(in HitInfo hitInfo, BattleComponent soureBattleComponent)
         {
             CharacterBattleAttributeSet soureAttrubyteSet = soureBattleComponent.GetBattleAttributeSet<CharacterBattleAttributeSet>();
@@ -16,7 +16,7 @@ namespace UnitySisters.BattleSystem
             int hp = soureAttrubyteSet.HP;
             hp = (int)((float)hp - (hitAttack - soureDefense));
 
-            soureAttrubyteSet.HP.Value = hp;
+            soureAttrubyteSet.HP.FinalValue = hp;
 
             if (hp <= 0)
                 Debug.Log("다이");

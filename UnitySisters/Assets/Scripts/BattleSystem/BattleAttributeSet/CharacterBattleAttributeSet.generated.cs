@@ -25,10 +25,10 @@ namespace @UnitySisters.@BattleSystem
             if (this.@hp == null)
                 target.@hp = null;
             else if (context.TryGetCopy(this.@hp, out object __hpExistingWrapperCopy))
-                target.@hp = (global::@UnityFramework.@ReflectionProperty<global::@System.@Int32>)__hpExistingWrapperCopy;
+                target.@hp = (global::@UnityFramework.@BattleSystem.@AttributeSet<global::@System.@Int32>)__hpExistingWrapperCopy;
             else
             {
-                global::@UnityFramework.@ReflectionProperty<global::@System.@Int32> __hpWrapperCopy = new global::@UnityFramework.@ReflectionProperty<global::@System.@Int32>();
+                global::@UnityFramework.@BattleSystem.@AttributeSet<global::@System.@Int32> __hpWrapperCopy = new global::@UnityFramework.@BattleSystem.@AttributeSet<global::@System.@Int32>();
                 context.RegisterCopy(this.@hp, __hpWrapperCopy);
                 global::@System.@Int32 __hpWrappedValue = (global::@System.@Int32)this.@hp;
                 global::@System.@Int32 __hpCopiedValue = global::UnityFramework.Utility.DeepCopyUtility.CopyReference(__hpWrappedValue, context);
@@ -38,10 +38,10 @@ namespace @UnitySisters.@BattleSystem
             if (this.@attack == null)
                 target.@attack = null;
             else if (context.TryGetCopy(this.@attack, out object __attackExistingWrapperCopy))
-                target.@attack = (global::@UnityFramework.@ReflectionProperty<global::@System.@Single>)__attackExistingWrapperCopy;
+                target.@attack = (global::@UnityFramework.@BattleSystem.@AttributeSet<global::@System.@Single>)__attackExistingWrapperCopy;
             else
             {
-                global::@UnityFramework.@ReflectionProperty<global::@System.@Single> __attackWrapperCopy = new global::@UnityFramework.@ReflectionProperty<global::@System.@Single>();
+                global::@UnityFramework.@BattleSystem.@AttributeSet<global::@System.@Single> __attackWrapperCopy = new global::@UnityFramework.@BattleSystem.@AttributeSet<global::@System.@Single>();
                 context.RegisterCopy(this.@attack, __attackWrapperCopy);
                 global::@System.@Single __attackWrappedValue = (global::@System.@Single)this.@attack;
                 global::@System.@Single __attackCopiedValue = global::UnityFramework.Utility.DeepCopyUtility.CopyReference(__attackWrappedValue, context);
@@ -51,10 +51,10 @@ namespace @UnitySisters.@BattleSystem
             if (this.@defense == null)
                 target.@defense = null;
             else if (context.TryGetCopy(this.@defense, out object __defenseExistingWrapperCopy))
-                target.@defense = (global::@UnityFramework.@ReflectionProperty<global::@System.@Single>)__defenseExistingWrapperCopy;
+                target.@defense = (global::@UnityFramework.@BattleSystem.@AttributeSet<global::@System.@Single>)__defenseExistingWrapperCopy;
             else
             {
-                global::@UnityFramework.@ReflectionProperty<global::@System.@Single> __defenseWrapperCopy = new global::@UnityFramework.@ReflectionProperty<global::@System.@Single>();
+                global::@UnityFramework.@BattleSystem.@AttributeSet<global::@System.@Single> __defenseWrapperCopy = new global::@UnityFramework.@BattleSystem.@AttributeSet<global::@System.@Single>();
                 context.RegisterCopy(this.@defense, __defenseWrapperCopy);
                 global::@System.@Single __defenseWrappedValue = (global::@System.@Single)this.@defense;
                 global::@System.@Single __defenseCopiedValue = global::UnityFramework.Utility.DeepCopyUtility.CopyReference(__defenseWrappedValue, context);

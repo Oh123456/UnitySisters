@@ -7,7 +7,7 @@ namespace UnityFramework
         where T : IEquatable<T> 
     {
         [UnityEngine.SerializeField]
-        private T value;
+        protected T value;
         public event Action<T> OnChanged;
 
         public T Value
@@ -26,7 +26,7 @@ namespace UnityFramework
         /// <summary>
         /// 모든 이벤트 구독 해지
         /// </summary>
-        public void ClearListeners()
+        public virtual void ClearListeners()
         {
             OnChanged = null;
         }
@@ -35,7 +35,7 @@ namespace UnityFramework
         /// 데이터 초기화
         /// </summary>
         /// <param name="isReflection">리플렉션 여부</param>
-        public void ClearData(bool isReflection = false)
+        public virtual void ClearData(bool isReflection = false)
         {
             value = default(T);
             if (isReflection)

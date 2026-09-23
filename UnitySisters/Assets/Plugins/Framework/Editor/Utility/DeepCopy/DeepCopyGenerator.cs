@@ -441,7 +441,8 @@ namespace UnityFramework.Utility.Editor
                     continue;
 
                 ParameterInfo[] parameters = method.GetParameters();
-                if (parameters.Length == 1 && parameters[0].ParameterType == wrapperType)
+                if (parameters.Length == 1 &&
+                    parameters[0].ParameterType.IsAssignableFrom(wrapperType))
                     return true;
             }
             return false;

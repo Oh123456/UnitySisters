@@ -9,20 +9,20 @@ namespace UnitySisters.BattleSystem
     [DeepCopy]
     public partial class CharacterBattleAttributeSet : BattleAttributeSet
     {
-        [DeepCopyWrapperField((nameof(ReflectionProperty<int>.Value)))]
-        [SerializeField] private ReflectionProperty<int> hp = new();
+        [DeepCopyWrapperField((nameof(AttributeSet<int>.Value)))]
+        [SerializeField] private AttributeSet<int> hp = new();
 
-        [DeepCopyWrapperField((nameof(ReflectionProperty<float>.Value)))]
-        [SerializeField] private ReflectionProperty<float> attack = new();
+        [DeepCopyWrapperField((nameof(AttributeSet<float>.Value)))]
+        [SerializeField] private AttributeSet<float> attack = new();
 
-        [DeepCopyWrapperField((nameof(ReflectionProperty<float>.Value)))]
-        [SerializeField] private ReflectionProperty<float> defense = new();
+        [DeepCopyWrapperField((nameof(AttributeSet<float>.Value)))]
+        [SerializeField] private AttributeSet<float> defense = new();
 
 
 
-        public ReflectionProperty<int> HP => hp;
-        public ReflectionProperty<float> Attack => attack;
-        public ReflectionProperty<float> Defense => defense;
+        public AttributeSet<int> HP => hp;
+        public AttributeSet<float> Attack => attack;
+        public AttributeSet<float> Defense => defense;
 
     }
 

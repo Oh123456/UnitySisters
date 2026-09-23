@@ -1,0 +1,5 @@
+<linker>
+  <assembly fullname="Assembly-CSharp">
+    <type fullname="UnitySisters.UnitySistersBuffModifierContainer" preserve="all" />
+  </assembly>
+</linker>

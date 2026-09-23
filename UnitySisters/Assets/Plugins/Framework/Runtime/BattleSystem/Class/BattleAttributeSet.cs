@@ -11,9 +11,9 @@ namespace UnityFramework.BattleSystem
     [System.Serializable]
     public class DefaultAttributeSet : BattleAttributeSet
     {
-        public readonly ReflectionProperty<int> hpAttribute = new ReflectionProperty<int>();
-        public readonly ReflectionProperty<int> attackAttribute = new ReflectionProperty<int>();
-        public readonly ReflectionProperty<int> defenseAttribute = new ReflectionProperty<int>();
+        public readonly AttributeSet<int> hpAttribute = new AttributeSet<int>();
+        public readonly AttributeSet<int> attackAttribute = new AttributeSet<int>();
+        public readonly AttributeSet<int> defenseAttribute = new AttributeSet<int>();
     }
 
 }

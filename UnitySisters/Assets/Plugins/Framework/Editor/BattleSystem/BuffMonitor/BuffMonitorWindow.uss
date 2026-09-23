@@ -1,0 +1,111 @@
+.buff-monitor-root {
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.buff-monitor-header {
+    min-height: 24px;
+    flex-direction: row;
+    align-items: center;
+    padding-left: 8px;
+    padding-right: 5px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(67, 67, 67);
+}
+
+.buff-monitor-play-status {
+    flex-grow: 1;
+    -unity-font-style: bold;
+}
+
+.buff-monitor-refresh-button {
+    min-width: 72px;
+}
+
+.buff-monitor-split,
+.buff-monitor-pane,
+.buff-monitor-scroll,
+.buff-monitor-component-list {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.buff-monitor-pane {
+    padding-left: 6px;
+    padding-right: 6px;
+    padding-bottom: 6px;
+}
+
+.buff-monitor-title {
+    min-height: 26px;
+    padding-top: 6px;
+    padding-left: 2px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(72, 72, 72);
+    -unity-font-style: bold;
+    font-size: 13px;
+}
+
+.buff-monitor-selection,
+.buff-monitor-status {
+    min-height: 22px;
+    padding-left: 3px;
+    padding-top: 4px;
+    color: rgb(176, 176, 176);
+}
+
+.buff-monitor-component-list {
+    margin-top: 4px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-color: rgb(66, 66, 66);
+    border-bottom-color: rgb(66, 66, 66);
+    border-left-color: rgb(66, 66, 66);
+    border-right-color: rgb(66, 66, 66);
+}
+
+.buff-monitor-component-item {
+    padding-left: 5px;
+    -unity-text-align: middle-left;
+}
+
+.buff-monitor-entry {
+    margin-top: 4px;
+    margin-right: 3px;
+    padding-left: 4px;
+    padding-right: 4px;
+    padding-bottom: 5px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-color: rgb(67, 67, 67);
+    border-bottom-color: rgb(67, 67, 67);
+    border-left-color: rgb(67, 67, 67);
+    border-right-color: rgb(67, 67, 67);
+    border-radius: 3px;
+    background-color: rgb(48, 48, 48);
+}
+
+.buff-monitor-stack {
+    min-height: 20px;
+    padding-left: 16px;
+    color: rgb(190, 190, 190);
+}
+
+.buff-monitor-data-container,
+.buff-monitor-modifier-container {
+    padding-left: 12px;
+    padding-right: 4px;
+    padding-bottom: 3px;
+}
+
+.buff-monitor-cached-field {
+    min-height: 19px;
+    -unity-text-align: middle-left;
+    white-space: nowrap;
+}
