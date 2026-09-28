@@ -6,10 +6,10 @@ namespace UnityFramework.BattleSystem
     public interface IBuffModifierCollection<T>
     {
         public int Count { get; }
-        void Add(IBuffModifier<T> modifier);
-        bool Remove(IBuffModifier<T> modifier);
+        void Add(BuffModifierBinding<T> buffModifierBinding);
+        bool Remove(BuffModifierBinding<T> buffModifierBinding);
         public void Clear();
-        IEnumerable<IBuffModifier<T>> Enumerate();
+        IEnumerable<BuffModifierBinding<T>> Enumerate();
     }
 
 }

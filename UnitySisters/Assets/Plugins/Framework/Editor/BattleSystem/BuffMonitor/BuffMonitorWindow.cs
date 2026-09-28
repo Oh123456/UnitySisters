@@ -402,6 +402,7 @@ namespace UnityFramework.BattleSystem.Editor
                     attributeProperty,
                     selectedBattleComponent.BattleAttributeSet?.GetType().Name ??
                     "Battle Attribute Set");
+                attributeField.SetEnabled(false);
                 attributeField.Bind(selectedBattleComponentObject);
                 attributeScroll.Add(attributeField);
             }
@@ -491,6 +492,13 @@ namespace UnityFramework.BattleSystem.Editor
                 stackLabel.AddToClassList("buff-monitor-stack");
                 root.Add(stackLabel);
 
+                Label durationLabel = new Label(GetDurationText(
+                    cachedBuff.LifetimeType,
+                    cachedBuff.ElapsedDuration,
+                    cachedBuff.Duration));
+                durationLabel.AddToClassList("buff-monitor-duration");
+                root.Add(durationLabel);
+
                 Foldout dataFoldout = new Foldout
                 {
                     text = $"Buff Data ({cachedBuff.DataTypeName})",
@@ -550,6 +558,16 @@ namespace UnityFramework.BattleSystem.Editor
             }
         }
 
+        private static string GetDurationText(
+            BuffLifetimeType lifetimeType,
+            float elapsedDuration,
+            float duration)
+        {
+            return lifetimeType == BuffLifetimeType.Permanent
+                ? "Duration: Unlimited"
+                : $"Duration: {elapsedDuration:F2} / {duration:F2}s";
+        }
+
         private void ClearBuffEntryViews()
         {
             for (int i = 0; i < buffEntryViews.Count; i++)
@@ -593,6 +611,7 @@ namespace UnityFramework.BattleSystem.Editor
             internal Foldout Root { get; }
 
             private readonly Label stackLabel;
+            private readonly Label durationLabel;
             private readonly Foldout dataFoldout;
             private readonly Foldout modifiersFoldout;
             private readonly VisualElement dataContainer;
@@ -611,6 +630,10 @@ namespace UnityFramework.BattleSystem.Editor
                 stackLabel = new Label();
                 stackLabel.AddToClassList("buff-monitor-stack");
                 Root.Add(stackLabel);
+
+                durationLabel = new Label();
+                durationLabel.AddToClassList("buff-monitor-duration");
+                Root.Add(durationLabel);
 
                 dataFoldout = new Foldout { text = "Buff Data", value = true };
                 dataContainer = new VisualElement();
@@ -632,6 +655,10 @@ namespace UnityFramework.BattleSystem.Editor
                 BuffId = snapshot.BuffId;
                 Root.text = $"Buff ID: {snapshot.BuffId}";
                 stackLabel.text = $"Stack: {snapshot.Stack} / {snapshot.MaxStack}";
+                durationLabel.text = GetDurationText(
+                    snapshot.LifetimeType,
+                    snapshot.ElapsedDuration,
+                    snapshot.Duration);
 
                 if (!ReferenceEquals(displayedData, snapshot.BuffData))
                     BuildDataView(snapshot.BuffData);

@@ -12,7 +12,11 @@ namespace UnityFramework.BattleSystem
         private int stack;
         public BuffState BuffState => buffState;
 
-        private Dictionary<IBuffModifiable, BuffModifierEntry> buffModifierEntries = new ();    
+        private Dictionary<IBuffModifiable, BuffModifierEntry> buffModifierEntries = new ();
+
+        private float duration;
+
+        public int BuffID => buffState.BuffData.BuffID;
 
         public int Stack
         {
@@ -23,7 +27,14 @@ namespace UnityFramework.BattleSystem
 
             set
             {
-                stack = Mathf.Clamp(value, 0, buffState.BuffData.MaxStack);
+                var buffData = buffState.BuffData;
+                int newStack = Mathf.Clamp(value, 0, buffData.MaxStack);
+                if (stack == newStack)
+                    return;
+
+                stack = newStack;
+                if (buffData.ResetDurationOnStack)
+                    duration = 0;
             }
         }
 
@@ -47,7 +58,7 @@ namespace UnityFramework.BattleSystem
                 buffModifierEntries.Add(buffModifiable, data);
             }
             data.AddBuffModifiers(buffModifier);
-            buffModifiable.AddBuffModifier(buffModifier);
+            buffModifiable.AddBuffModifier(buffModifier, this);
         }
 
         public void Reslase()
@@ -57,7 +68,8 @@ namespace UnityFramework.BattleSystem
             while (e.MoveNext())
             {
                 var value = e.Current.Value;
-                value.RemoveAllModifiers();
+                value.RemoveAllModifiers(this);
+                value.ApplyModifiers();
                 PoolManager.SetClassObject(value);
             }
 
@@ -73,6 +85,7 @@ namespace UnityFramework.BattleSystem
         {
             buffState = null;
             buffModifierEntries.Clear();
+            duration = 0.0f;
             stack = 0;
         }
 
@@ -81,7 +94,6 @@ namespace UnityFramework.BattleSystem
             return buffState != null;
         }
 
-        //만약 같은거 여러개 건들이면 리플렉션이 반복할겨 방법 구상
         public void StackChanged()
         {
             buffState.StackChanged(this);
@@ -96,6 +108,22 @@ namespace UnityFramework.BattleSystem
         public void Update(float deltaTime)
         {
             buffState.Update(this, deltaTime);
+            duration += deltaTime;
+        }
+
+        public bool IsExpired()
+        {            
+            var buffData = buffState.BuffData;
+            if (buffData.BuffLifetimeType == BuffLifetimeType.Timed &&
+                buffData.Duration <= duration)
+            {
+                if (buffData.RemoveAllOnExpire)
+                    stack = 0;
+
+                return true;
+            }
+
+            return false;
         }
     }
 

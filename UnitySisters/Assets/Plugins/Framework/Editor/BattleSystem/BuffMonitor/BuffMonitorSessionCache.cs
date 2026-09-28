@@ -31,6 +31,9 @@ namespace UnityFramework.BattleSystem.Editor
         [SerializeField] private int buffId;
         [SerializeField] private int stack;
         [SerializeField] private int maxStack;
+        [SerializeField] private BuffLifetimeType lifetimeType;
+        [SerializeField] private float elapsedDuration;
+        [SerializeField] private float duration;
         [SerializeField] private string dataTypeName;
         [SerializeField] private List<BuffMonitorCachedField> dataFields = new();
         [SerializeField] private List<string> modifierNames = new();
@@ -38,6 +41,9 @@ namespace UnityFramework.BattleSystem.Editor
         internal int BuffId => buffId;
         internal int Stack => stack;
         internal int MaxStack => maxStack;
+        internal BuffLifetimeType LifetimeType => lifetimeType;
+        internal float ElapsedDuration => elapsedDuration;
+        internal float Duration => duration;
         internal string DataTypeName => dataTypeName;
         internal IReadOnlyList<BuffMonitorCachedField> DataFields => dataFields;
         internal IReadOnlyList<string> ModifierNames => modifierNames;
@@ -47,6 +53,9 @@ namespace UnityFramework.BattleSystem.Editor
             buffId = snapshot.BuffId;
             stack = snapshot.Stack;
             maxStack = snapshot.MaxStack;
+            lifetimeType = snapshot.LifetimeType;
+            elapsedDuration = snapshot.ElapsedDuration;
+            duration = snapshot.Duration;
             dataTypeName = snapshot.BuffData == null ? "Null" : snapshot.BuffData.GetType().Name;
             modifierNames.AddRange(snapshot.ModifierNames);
             BuffMonitorSessionCache.CaptureManagedReference(snapshot.BuffData, dataFields);

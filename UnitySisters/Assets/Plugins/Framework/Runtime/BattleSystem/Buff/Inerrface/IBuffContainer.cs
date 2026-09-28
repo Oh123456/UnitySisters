@@ -5,7 +5,7 @@ namespace UnityFramework.BattleSystem
     public interface IBuffContainer
     {
         void AddBuff(BuffState buffState);
-        void RemoveBuff(int buffId);
+        bool RemoveBuff(int buffId);
     }
 
 }

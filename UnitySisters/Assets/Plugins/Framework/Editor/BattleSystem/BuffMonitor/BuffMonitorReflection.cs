@@ -11,17 +11,26 @@ namespace UnityFramework.BattleSystem.Editor
         internal int BuffId { get; }
         internal int Stack { get; }
         internal int MaxStack { get; }
+        internal BuffLifetimeType LifetimeType { get; }
+        internal float ElapsedDuration { get; }
+        internal float Duration { get; }
         internal IReadOnlyList<string> ModifierNames { get; }
 
         internal BuffMonitorSnapshot(
             BuffData buffData,
             int stack,
+            float elapsedDuration,
             IReadOnlyList<string> modifierNames)
         {
             BuffData = buffData;
             BuffId = buffData == null ? 0 : buffData.BuffID;
             Stack = stack;
             MaxStack = buffData == null ? 0 : buffData.MaxStack;
+            LifetimeType = buffData == null
+                ? BuffLifetimeType.Permanent
+                : buffData.BuffLifetimeType;
+            ElapsedDuration = elapsedDuration;
+            Duration = buffData == null ? 0.0f : buffData.Duration;
             ModifierNames = modifierNames;
         }
     }
@@ -36,6 +45,7 @@ namespace UnityFramework.BattleSystem.Editor
 
         private static readonly Dictionary<Type, PropertyInfo> StackProperties = new();
         private static readonly Dictionary<Type, PropertyInfo> BuffStateProperties = new();
+        private static readonly Dictionary<Type, FieldInfo> DurationFields = new();
         private static readonly Dictionary<Type, FieldInfo> ModifierEntryFields = new();
         private static readonly Dictionary<Type, FieldInfo> ModifierListFields = new();
 
@@ -70,9 +80,14 @@ namespace UnityFramework.BattleSystem.Editor
                         "BuffState")?.GetValue(instance) as BuffState;
 
                     BuffData buffData = buffState?.BuffData;
+                    float elapsedDuration = GetCachedField(
+                        DurationFields,
+                        instanceType,
+                        "duration")?.GetValue(instance) as float? ?? 0.0f;
                     snapshots.Add(new BuffMonitorSnapshot(
                         buffData,
                         stack,
+                        elapsedDuration,
                         GetModifierNames(instance, instanceType)));
                 }
 

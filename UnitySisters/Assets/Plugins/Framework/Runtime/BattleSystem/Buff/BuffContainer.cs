@@ -36,10 +36,10 @@ namespace UnityFramework.BattleSystem
             }
         }
 
-        public void RemoveBuff(int buffId)
+        public bool RemoveBuff(int buffId)
         {
             if (!buffIndexs.TryGetValue(buffId, out int index))
-                return;
+                return false;
             
             var removeInstance = buffList[index];
 
@@ -48,7 +48,7 @@ namespace UnityFramework.BattleSystem
             {
                 removeInstance.Stack = removeStack;
                 removeInstance.StackChanged();
-                return;
+                return false;
             }
             
             int lastIndex = buffList.Count - 1;
@@ -62,7 +62,9 @@ namespace UnityFramework.BattleSystem
             buffIndexs.Remove(buffId);
             buffList.RemoveAt(lastIndex);
 
+            removeInstance.Reslase();
             PoolManager.SetClassObject(removeInstance);
+            return true;
         }
 
         public void SetBattleAttributeSet(BattleAttributeSet battleAttributeSet)
@@ -74,9 +76,17 @@ namespace UnityFramework.BattleSystem
         {
             float deltaTime = Time.deltaTime;
             int count = buffList.Count;
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < count;)
             {
-                buffList[i].Update(deltaTime);
+                var buff = buffList[i];
+                buff.Update(deltaTime);
+                if (buff.IsExpired() &&
+                    RemoveBuff(buff.BuffID))
+                {
+                    --count;
+                    continue;
+                }
+                i++;
             }
         }
 
@@ -91,7 +101,6 @@ namespace UnityFramework.BattleSystem
                     continue;
                 PoolManager.SetClassObject(item);
             }
-            buffIndexs.Clear();
             buffIndexs.Clear();
         }
     }

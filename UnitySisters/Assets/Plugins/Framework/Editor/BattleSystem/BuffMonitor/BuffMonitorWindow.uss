@@ -91,7 +91,8 @@
     background-color: rgb(48, 48, 48);
 }
 
-.buff-monitor-stack {
+.buff-monitor-stack,
+.buff-monitor-duration {
     min-height: 20px;
     padding-left: 16px;
     color: rgb(190, 190, 190);

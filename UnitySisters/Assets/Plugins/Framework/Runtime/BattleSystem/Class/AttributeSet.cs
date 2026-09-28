@@ -3,12 +3,22 @@ using UnityEngine;
 
 namespace UnityFramework.BattleSystem
 {
-    [System.Serializable]
-    public class AttributeSet<T> : ReflectionProperty<T>, IBuffModifiable where T : IEquatable<T>
+    public abstract class AttributeValueConverter<T> 
+        where T : struct, IEquatable<T>
     {
+        public abstract float ToFloat(T value);
+        public abstract T FromFloat(float value);
+    }
+
+    [System.Serializable]
+    public class AttributeSet<T> : ReflectionProperty<T>, IBuffModifiable 
+        where T : struct, IEquatable<T> 
+    {
+
+
         [SerializeField] private T finalValue;
         public System.Action<T> OnChangedFinalValue;
-
+        private AttributeValueConverter<T> converter;
         protected IBuffModifierCollection<T> buffModifiers;
 
         public T FinalValue
@@ -23,9 +33,10 @@ namespace UnityFramework.BattleSystem
             }
         }
 
-        public AttributeSet() : base()
+        public AttributeSet(AttributeValueConverter<T> converter =  null) : base()
         {
             buffModifiers = new BuffModifierList<T>();
+            this.converter = converter;
         }
 
         ~AttributeSet()
@@ -48,31 +59,97 @@ namespace UnityFramework.BattleSystem
                 OnChangedFinalValue?.Invoke(finalValue);
         }
 
-        void IBuffModifiable.AddBuffModifier(IBuffModifier modifier)
+        void IBuffModifiable.AddBuffModifier(IBuffModifier modifier, IBuffInstance buffInstance)
         {
             if (modifier is IBuffModifier<T> buffModifier)
-                buffModifiers.Add(buffModifier);
+                buffModifiers.Add(new BuffModifierBinding<T>(buffModifier, buffInstance));
             else
                 throw new ArgumentException($"Modifier type mismatch. Expected {typeof(IBuffModifier<T>).Name}, but received {modifier.GetType().Name}.", nameof(modifier));
         }
 
-        void IBuffModifiable.RemoveBuffModifier(IBuffModifier modifier)
+        void IBuffModifiable.RemoveBuffModifier(IBuffModifier modifier, IBuffInstance buffInstance)
         {
             if (modifier is IBuffModifier<T> buffModifier)
-                buffModifiers.Remove(buffModifier);
+                buffModifiers.Remove(new BuffModifierBinding<T>(buffModifier, buffInstance));
             else
                 throw new ArgumentException($"Modifier type mismatch. Expected {typeof(IBuffModifier<T>).Name}, but received {modifier.GetType().Name}.", nameof(modifier));
         }
 
         void IBuffModifiable.ApplyModifiers()
         {
-            T cache = value;
-            foreach (IBuffModifier<T> modifier in buffModifiers.Enumerate())
+            BuffModifierContext buffModifierContext = BuffModifierSystem.BuffModifierContainer.GetBuffModifierContext();
+
+            try
             {
-                cache = modifier.Modifiy(cache);
+                T cache = value;
+                foreach (BuffModifierBinding<T> modifier in buffModifiers.Enumerate())
+                {
+                    cache = modifier.buffModifier.Modify(value, cache, buffModifierContext, modifier.buffInstance);
+                }
+
+                if (converter == null)
+                {
+                    FinalValue = value;
+                    return;
+                }
+
+                float calcuateValue = buffModifierContext.Calculate(converter.ToFloat(value));
+                FinalValue = converter.FromFloat(calcuateValue);
+            }
+            finally
+            {
+                BuffModifierSystem.BuffModifierContainer.SetBuffModifierContext(buffModifierContext);
+            }
+        }
+
+
+    }
+
+    [System.Serializable]
+    public class AttributeSetInt : AttributeSet<int>
+    {
+        public class Converter : AttributeValueConverter<int>
+        {
+            public override float ToFloat(int value)
+            {
+                return value;
             }
 
-            FinalValue = cache;
+            public override int FromFloat(float value)
+            {
+                return Mathf.RoundToInt(value);
+            }
+        }
+
+        public static Converter CONVERTER = new Converter();
+
+        public AttributeSetInt() : base(converter: CONVERTER)
+        {
+            
+        }
+    }
+
+    [System.Serializable]
+    public class AttributeSetFloat : AttributeSet<float>
+    {
+        public class Converter : AttributeValueConverter<float>
+        {
+            public override float ToFloat(float value)
+            {
+                return value;
+            }
+
+            public override float FromFloat(float value)
+            {
+                return value;
+            }
+        }
+
+        public static Converter CONVERTER = new Converter();
+
+        public AttributeSetFloat() : base(converter: CONVERTER)
+        {
+
         }
     }
 

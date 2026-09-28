@@ -9,7 +9,7 @@ namespace UnityFramework.BattleSystem
 
     public interface IBuffModifier<T> : IBuffModifier
     {
-        public T Modifiy(T inValue);
+        public T Modify(T baseValue, T currentValue, BuffModifierContext buffModifierContext, IBuffInstance buffInstance);
     }
 
 }

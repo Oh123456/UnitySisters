@@ -6,10 +6,10 @@ namespace UnityFramework.BattleSystem
 {
     public class BuffModifierList<T> : IBuffModifierCollection<T>
     {
-        public struct Enumerator : IEnumerator<IBuffModifier<T>>, IEnumerator, IDisposable
+        public struct Enumerator : IEnumerator<BuffModifierBinding<T>>, IEnumerator, IDisposable
         {
-            private List<IBuffModifier<T>>.Enumerator enumerator;
-            public IBuffModifier<T> Current
+            private List<BuffModifierBinding<T>>.Enumerator enumerator;
+            public BuffModifierBinding<T> Current
             {
                 get
                 {
@@ -19,7 +19,7 @@ namespace UnityFramework.BattleSystem
 
             object IEnumerator.Current => Current;
 
-            public Enumerator(List<IBuffModifier<T>> buffModifiers)
+            public Enumerator(List<BuffModifierBinding<T>> buffModifiers)
             {
                 enumerator = buffModifiers.GetEnumerator();
             }
@@ -46,21 +46,21 @@ namespace UnityFramework.BattleSystem
             }
         }
 
-        private List<IBuffModifier<T>> buffModifiers = new();
+        private List<BuffModifierBinding<T>> buffModifiers = new();
 
         private bool isDirty = false;
 
         public int Count => buffModifiers.Count;
 
-        public void Add(IBuffModifier<T> modifier)
+        public void Add(BuffModifierBinding<T> buffModifierBinding)
         {
-            buffModifiers.Add(modifier);
+            buffModifiers.Add(buffModifierBinding);
             isDirty = true;
         }
 
-        public bool Remove(IBuffModifier<T> modifier)
+        public bool Remove(BuffModifierBinding<T> buffModifierBinding)
         {
-            if (!buffModifiers.Remove(modifier))
+            if (!buffModifiers.Remove(buffModifierBinding))
                 return false;
 
             isDirty = true;
@@ -72,7 +72,8 @@ namespace UnityFramework.BattleSystem
             if (!isDirty)
                 return;
 
-            buffModifiers.Sort(static (a, b) => a.Priority.CompareTo(b.Priority));
+            buffModifiers.Sort(static (a, b) => a.buffModifier.Priority.CompareTo(b.buffModifier.Priority));
+            isDirty = false;
         }
 
         public void Clear()
@@ -80,7 +81,7 @@ namespace UnityFramework.BattleSystem
             buffModifiers.Clear();
         }
 
-        public IEnumerable<IBuffModifier<T>> Enumerate()
+        public IEnumerable<BuffModifierBinding<T>> Enumerate()
         {
             EnsureSorted();
             return buffModifiers;
@@ -97,6 +98,24 @@ namespace UnityFramework.BattleSystem
 
 
 
+    }
+
+    public readonly struct BuffModifierBinding<T> : System.IEquatable<BuffModifierBinding<T>>
+    {
+        public readonly IBuffModifier<T> buffModifier;
+        public readonly IBuffInstance buffInstance;
+
+        public BuffModifierBinding(IBuffModifier<T> buffModifier, IBuffInstance buffInstance)
+        {
+            this.buffModifier = buffModifier;
+            this.buffInstance = buffInstance;
+        }
+
+        public bool Equals(BuffModifierBinding<T> other)
+        {
+            return ReferenceEquals(buffModifier, other.buffModifier) &&
+                   ReferenceEquals(buffInstance, other.buffInstance);
+        }
     }
 
 }

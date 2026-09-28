@@ -5,7 +5,7 @@ namespace UnityFramework.BattleSystem
 {
     internal class BuffModifierEntry : PoolObject.IPoolObject
     {
-        private IBuffModifiable modifiabl;
+        private IBuffModifiable modifiabl;        
         private List<IBuffModifier> buffModifiers = new();
 
         public void SetBuffModifiable(IBuffModifiable buffModifiable)
@@ -23,12 +23,12 @@ namespace UnityFramework.BattleSystem
             modifiabl.ApplyModifiers();
         }
 
-        public void RemoveAllModifiers()
+        public void RemoveAllModifiers(IBuffInstance buffInstance)
         {
             int count = buffModifiers.Count;
             for(int i = 0; i < count; i++)
             {
-                modifiabl.RemoveBuffModifier(buffModifiers[i]);
+                modifiabl.RemoveBuffModifier(buffModifiers[i], buffInstance);
             }
         }
 
@@ -39,7 +39,7 @@ namespace UnityFramework.BattleSystem
 
         public void Deactivate()
         {
-            modifiabl = null;
+            modifiabl = null;            
             buffModifiers.Clear();
         }
 
