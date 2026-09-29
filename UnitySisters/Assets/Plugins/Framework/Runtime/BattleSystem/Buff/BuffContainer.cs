@@ -9,15 +9,16 @@ namespace UnityFramework.BattleSystem
     {
         private Dictionary<int, int> buffIndexs = new Dictionary<int, int>();
         private List<BuffInstance> buffList = new List<BuffInstance>();
-        private BattleAttributeSet controlBattleAttributeSet;
+        private BattleComponent controlBattleComponent;
 
-        public void AddBuff(BuffState buffState)
+        public void AddBuff(BuffState buffState, IBattleComponent buffSource)
         {
             BuffInstance buffInstance = null;
             if (!buffIndexs.TryGetValue(buffState.BuffData.BuffID, out int index))
             {
                 buffInstance = PoolManager.GetClassObject<BuffInstance>();
-                buffInstance.SetBuffData(buffState, controlBattleAttributeSet);
+                buffInstance.SetBuffData(buffState, controlBattleComponent.BattleAttributeSet, 
+                    buffTaget:controlBattleComponent , buffSource: buffSource);
                 buffIndexs.Add(buffState.BuffData.BuffID, buffList.Count);
                 buffList.Add(buffInstance);
             }
@@ -56,7 +57,7 @@ namespace UnityFramework.BattleSystem
             {
                 var swapInstance = buffList[lastIndex];
                 buffList[index] = swapInstance;
-                buffIndexs[swapInstance.BuffState.BuffData.BuffID] = index;
+                buffIndexs[swapInstance.BuffID] = index;
             }
 
             buffIndexs.Remove(buffId);
@@ -67,9 +68,9 @@ namespace UnityFramework.BattleSystem
             return true;
         }
 
-        public void SetBattleAttributeSet(BattleAttributeSet battleAttributeSet)
+        public void SetBattleComponent(BattleComponent battleComponent)
         {
-            controlBattleAttributeSet = battleAttributeSet;
+            controlBattleComponent = battleComponent;
         }
 
         public void Update()
@@ -92,7 +93,7 @@ namespace UnityFramework.BattleSystem
 
         public void Dispose()
         {
-            controlBattleAttributeSet = null;
+            controlBattleComponent = null;
             int count = buffList.Count;
             for (int i = 0; i < count; i++)
             { 

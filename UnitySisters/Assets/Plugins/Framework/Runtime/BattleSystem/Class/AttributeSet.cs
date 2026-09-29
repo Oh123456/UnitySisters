@@ -1,23 +1,21 @@
-using System;
 using UnityEngine;
 
 namespace UnityFramework.BattleSystem
 {
-    public abstract class AttributeValueConverter<T> 
-        where T : struct, IEquatable<T>
+    public interface IReadOnlyAttributeSet<T> : IReadOnlyReflectionProperty<T>
+        where T : System.IEquatable<T>
     {
-        public abstract float ToFloat(T value);
-        public abstract T FromFloat(float value);
+        T FinalValue { get; }
+        event System.Action<T> OnChangedFinalValue;
     }
 
     [System.Serializable]
-    public class AttributeSet<T> : ReflectionProperty<T>, IBuffModifiable 
-        where T : struct, IEquatable<T> 
+    public class AttributeSet<T> : ReflectionProperty<T>, IReadOnlyAttributeSet<T>, IBuffModifiable 
+        where T : System.IEquatable<T> 
     {
 
-
         [SerializeField] private T finalValue;
-        public System.Action<T> OnChangedFinalValue;
+        public event System.Action<T> OnChangedFinalValue;
         private AttributeValueConverter<T> converter;
         protected IBuffModifierCollection<T> buffModifiers;
 
@@ -64,7 +62,7 @@ namespace UnityFramework.BattleSystem
             if (modifier is IBuffModifier<T> buffModifier)
                 buffModifiers.Add(new BuffModifierBinding<T>(buffModifier, buffInstance));
             else
-                throw new ArgumentException($"Modifier type mismatch. Expected {typeof(IBuffModifier<T>).Name}, but received {modifier.GetType().Name}.", nameof(modifier));
+                throw new System.ArgumentException($"Modifier type mismatch. Expected {typeof(IBuffModifier<T>).Name}, but received {modifier.GetType().Name}.", nameof(modifier));
         }
 
         void IBuffModifiable.RemoveBuffModifier(IBuffModifier modifier, IBuffInstance buffInstance)
@@ -72,7 +70,7 @@ namespace UnityFramework.BattleSystem
             if (modifier is IBuffModifier<T> buffModifier)
                 buffModifiers.Remove(new BuffModifierBinding<T>(buffModifier, buffInstance));
             else
-                throw new ArgumentException($"Modifier type mismatch. Expected {typeof(IBuffModifier<T>).Name}, but received {modifier.GetType().Name}.", nameof(modifier));
+                throw new System.ArgumentException($"Modifier type mismatch. Expected {typeof(IBuffModifier<T>).Name}, but received {modifier.GetType().Name}.", nameof(modifier));
         }
 
         void IBuffModifiable.ApplyModifiers()
@@ -80,11 +78,10 @@ namespace UnityFramework.BattleSystem
             BuffModifierContext buffModifierContext = BuffModifierSystem.BuffModifierContainer.GetBuffModifierContext();
 
             try
-            {
-                T cache = value;
+            {                
                 foreach (BuffModifierBinding<T> modifier in buffModifiers.Enumerate())
                 {
-                    cache = modifier.buffModifier.Modify(value, cache, buffModifierContext, modifier.buffInstance);
+                    modifier.buffModifier.Accumulate(value, buffModifierContext, modifier.buffInstance);
                 }
 
                 if (converter == null)
@@ -104,6 +101,14 @@ namespace UnityFramework.BattleSystem
 
 
     }
+
+    public abstract class AttributeValueConverter<T>
+    where T : System.IEquatable<T>
+    {
+        public abstract float ToFloat(T value);
+        public abstract T FromFloat(float value);
+    }
+
 
     [System.Serializable]
     public class AttributeSetInt : AttributeSet<int>

@@ -6,7 +6,7 @@ namespace UnityFramework.BattleSystem
     [System.Serializable]
     public abstract class HitResolver
     {
-        public THitResult Hit<THitResult>(in HitInfo hitInfo, BattleComponent soureBattleComponent) where THitResult : struct, IHitResult
+        public THitResult Hit<THitResult>(in HitInfo hitInfo, IBattleComponent soureBattleComponent) where THitResult : struct, IHitResult
         {
             if (this is HitResolver<THitResult> hitResolver)
                 return hitResolver.Hit(hitInfo, soureBattleComponent);
@@ -20,7 +20,7 @@ namespace UnityFramework.BattleSystem
     [System.Serializable]
     public abstract class HitResolver<THitResult> : HitResolver where THitResult : struct, IHitResult
     {
-        public abstract THitResult Hit(in HitInfo hitInfo, BattleComponent soureBattleComponent);
+        public abstract THitResult Hit(in HitInfo hitInfo, IBattleComponent soureBattleComponent);
     }
 
 }

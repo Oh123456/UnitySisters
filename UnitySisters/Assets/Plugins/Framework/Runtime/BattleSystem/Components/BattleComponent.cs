@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace UnityFramework.BattleSystem
 {
-    public class BattleComponent : MonoBehaviour, IAttackAble, IHitAble
+    public class BattleComponent : MonoBehaviour, IBattleComponent
     {
         [SerializeReference, SerializeReferenceSelector] protected BattleAttributeSet battleAttributeSet;
         [SerializeReference, SerializeReferenceSelector] protected HitResolver hitResolver;
@@ -30,7 +30,7 @@ namespace UnityFramework.BattleSystem
         protected virtual void Awake()
         {
             buffContainer = new BuffContainer();
-            buffContainer.SetBattleAttributeSet(battleAttributeSet);
+            buffContainer.SetBattleComponent(this);
         }
 
         private void Update()
@@ -62,6 +62,15 @@ namespace UnityFramework.BattleSystem
             THitResult hitResult = default(THitResult);
             hitResult.SetHitError(errorCode);
             return hitResult;
+        }
+
+
+        public IReadOnlyAttributeSet<T> GetAttributeValue<T>(Func<BattleAttributeSet, IReadOnlyAttributeSet<T>> selector)
+            where T : IEquatable<T>
+        {
+            if (selector == null)
+                return null;
+            return selector(battleAttributeSet);
         }
     }
 }

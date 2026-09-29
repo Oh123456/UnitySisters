@@ -43,7 +43,14 @@ namespace UnityFramework.BattleSystem
 
         public override void Update(IBuffInstance buffInstance, float deltaTime)
         {
-            
+            var attack = buffInstance.BuffSource.GetAttributeValue<int>(static x => ((DefaultAttributeSet)x).attackAttribute);
+            HitInfo hitInfo = new HitInfo()
+            {
+                // 셈플이기에 이렇게함 풀링필요
+                damageType = new DamageType() { damage = /*buffInstance.BuffData.damage * */ attack.Value }
+            };
+
+            buffInstance.ExecuteHit<DefaultHitResult>(hitInfo);
         }
     }
 }

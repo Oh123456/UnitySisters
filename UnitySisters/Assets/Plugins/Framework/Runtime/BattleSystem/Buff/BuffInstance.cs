@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityFramework.Pool;
@@ -10,7 +11,8 @@ namespace UnityFramework.BattleSystem
         private BuffState buffState;
         private BattleAttributeSet battleAttributeSet;
         private int stack;
-        public BuffState BuffState => buffState;
+        private IBattleComponent buffTaget;
+        private IBattleComponent buffSource;
 
         private Dictionary<IBuffModifiable, BuffModifierEntry> buffModifierEntries = new ();
 
@@ -18,6 +20,7 @@ namespace UnityFramework.BattleSystem
 
         public int BuffID => buffState.BuffData.BuffID;
 
+        public BuffData BuffData => buffState.BuffData;
         public int Stack
         {
             get 
@@ -38,10 +41,16 @@ namespace UnityFramework.BattleSystem
             }
         }
 
-        public void SetBuffData(BuffState buffState, BattleAttributeSet battleAttributeSet )
+        public IReadOnlyBattleComponent BuffTaget => buffTaget;
+
+        public IReadOnlyBattleComponent BuffSource => buffSource;
+
+        public void SetBuffData(BuffState buffState, BattleAttributeSet battleAttributeSet, IBattleComponent buffTaget , IBattleComponent buffSource)
         {
             this.battleAttributeSet = battleAttributeSet;
             this.buffState = buffState;
+            this.buffTaget = buffTaget;
+            this.buffSource = buffSource;
             this.buffState.Enter(this);
             stack = 0;
         }
@@ -84,6 +93,9 @@ namespace UnityFramework.BattleSystem
         public void Deactivate()
         {
             buffState = null;
+            buffTaget = null;
+            buffSource = null;
+            battleAttributeSet = null;
             buffModifierEntries.Clear();
             duration = 0.0f;
             stack = 0;
@@ -124,6 +136,12 @@ namespace UnityFramework.BattleSystem
             }
 
             return false;
+        }
+
+        public THitResult ExecuteHit<THitResult>(HitInfo hitInfo) where THitResult : struct, IHitResult
+        {
+            hitInfo.hitBattleComponent = buffSource;
+            return buffTaget.Hit<THitResult>(in hitInfo);
         }
     }
 

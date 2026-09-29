@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityFramework.PoolObject;
-using static UnityEditor.MaterialProperty;
 
 namespace UnityFramework.Pool.Manager
 {
