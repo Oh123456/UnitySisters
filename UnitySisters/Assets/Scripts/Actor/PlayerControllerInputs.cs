@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnitySisters;
 using static UnityEngine.InputSystem.InputAction;
 using PlayerActions = InputSystem_Actions.PlayerActions;
 
@@ -15,6 +17,7 @@ public partial class PlayerController
 
 
     private PlayerActions playerActions;
+    private Queue<InputBuffer> inputBuffers = new();
 
     private void EnableInputSystems()
     {
@@ -72,7 +75,27 @@ public partial class PlayerController
     #region KeyCallbacks
     private void MovePerformed(CallbackContext callbackContext)
     {
-        characterCommand.movementCommand.moveInput = callbackContext.ReadValue<Vector2>();
+        Vector2 moveInput = callbackContext.ReadValue<Vector2>();
+        characterCommand.movementCommand.moveInput = moveInput;
+
+        InputKeyType inputKeyType = InputKeyType.None;
+
+        if (moveInput.y > 0.0f)
+            inputKeyType |= InputKeyType.Up;
+        else if (moveInput.y < 0.0f)
+            inputKeyType |= InputKeyType.Down;
+
+        if (moveInput.x > 0.0f)
+            inputKeyType |= InputKeyType.Right;
+        else if (moveInput.x < 0.0f)
+            inputKeyType |= InputKeyType.Left;
+
+
+        inputBuffers.Enqueue(new InputBuffer()
+        {
+            inputKeyType = inputKeyType,
+            time = Time.time
+        });
     }
 
     private void MoveCanceled(CallbackContext obj)
@@ -93,6 +116,12 @@ public partial class PlayerController
     private void AttackPerformed(CallbackContext callbackContext)
     {
         characterCommand.isAttackButton = true;
+
+        inputBuffers.Enqueue(new InputBuffer()
+        {
+            inputKeyType = InputKeyType.Attack,
+            time = Time.time
+        });
     }
 
     #endregion

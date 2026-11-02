@@ -18,6 +18,7 @@ namespace UnityFramework.BattleSystem
 
         private float duration;
 
+        public float Duration => duration;
         public int BuffID => buffState.BuffData.BuffID;
 
         public BuffData BuffData => buffState.BuffData;

@@ -1,0 +1,19 @@
+{
+    "name": "Framework.CommandTree.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:bc452c348dad31d4ea72e43a1d2fe17a",
+        "GUID:36158769a4fcccf40993067264cfdccb"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

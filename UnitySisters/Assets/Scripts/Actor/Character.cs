@@ -1,8 +1,9 @@
 using FSM;
 using UnityEngine;
+using UnityFramework.CommandTree;
+using UnitySisters;
 using UnitySisters.Command;
 using UnitySisters.Controller;
-using UnitySisters.Controller.Interface;
 using UnitySisters.Model;
 
 [RequireComponent(typeof(CharacterController))]
@@ -20,10 +21,16 @@ public class Character : MonoBehaviour
     [Header("FMS")]
     [SerializeField] private CharacterFSMCotnroller characterFSMCotnroller;
 
+    [Header("CommandList")]
+    [SerializeField] private UnitySistersCommandData commandData;
+
     private MovementModel movementModel = null;
     private CharacterAnimationModel characterAnimationModel = null;
     public Transform CarmeraTarget => carmeraTarget;
     public MovementController MovementController => movementController;
+
+    public bool IsInputBuffer => characterFSMCotnroller.IsInputBuffer;
+    public IReadOnlyCommandTree<InputKeyType> CommandTree => commandData.CommandTree;
 
     private void Awake()
     {

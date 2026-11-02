@@ -1,13 +1,14 @@
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityFramework.CommandTree;
 using UnitySisters.Command;
 using UnitySisters.Controller;
 using UnitySisters.Model;
 
 public partial class PlayerController : _3DModule.Controller.BaseController<CharacterCommand>
 {
- 
+
     [SerializeField] private CinemachineCamera cinemachineCamera;
 
     [Header("Camera")]
@@ -46,13 +47,49 @@ public partial class PlayerController : _3DModule.Controller.BaseController<Char
         if (currentControlCharacter == null)
             return;
 
+        if (!currentControlCharacter.IsInputBuffer)
+        {
+            float currentTime = Time.time;
+            var commandTee = currentControlCharacter.CommandTree;
+            if (commandTee != null)
+            {
+                var currnetNode = commandTee.Root;
+                ICommandTreeNode perCommandNode = null;
+
+                while (inputBuffers.Count > 0)
+                {
+                    var buffer = inputBuffers.Dequeue();
+                    if (currentTime - buffer.time > 0.5f)
+                        continue;
+                    var nextNode = commandTee.FindChild(currnetNode, buffer.inputKeyType);
+                    if (nextNode == null)
+                        continue;
+                    //nextNode
+                    var behavior = nextNode.CommandBehavior;
+                    perCommandNode = behavior != null ? nextNode : perCommandNode;    
+                    currnetNode = nextNode;
+                }
+
+                if (currnetNode?.CommandBehavior != null)
+                    currnetNode.CommandBehavior.Apply(characterCommand);
+                else if (perCommandNode != null)
+                    perCommandNode.CommandBehavior.Apply(characterCommand);
+            }
+            else
+            {
+                inputBuffers.Clear();
+            }
+        }
+
+
+
         Transform cameraTransform = cinemachineCamera.transform;
         Vector3 forward = cameraTransform.forward.normalized;
         forward.y = 0.0f;
         bool isShowCursor = showMouseCursor;
         characterCommand.isCameraControlAble = !isShowCursor;
         if (!isShowCursor)
-        {            
+        {
             characterCommand.movementCommand.moveWorldDirection = new Vector3(forward.x, 0.0f, forward.z);
             characterCommand.movementCommand.moveWorldRight = cameraTransform.right;
             characterCommand.cameraRotation = playerActions.Look.ReadValue<Vector2>();

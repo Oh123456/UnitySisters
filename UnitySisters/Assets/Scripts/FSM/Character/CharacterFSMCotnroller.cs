@@ -6,8 +6,15 @@ using UnitySisters.Model;
 namespace FSM
 {
 
+    public interface ICharacterFSMCotnroller
+    {
+        void EnableInputBuffer();
+        void DisableInputBuffer();
+        bool IsInputBuffer { get; }
+    }
+
     [RequireComponent(typeof(Character))]
-    public partial class CharacterFSMCotnroller : FSMController
+    public partial class CharacterFSMCotnroller : FSMController , ICharacterFSMCotnroller
     {
         [FSMCondition]
         protected enum CharacterCondition
@@ -27,6 +34,8 @@ namespace FSM
         private CharacterFSMModel characterFSMModel = new CharacterFSMModel();
 
         public CharacterFSMModel CharacterFSMModel => characterFSMModel;
+        private bool isInputBuffer = false ;
+        public bool IsInputBuffer => isInputBuffer ;
 
         protected override System.Func<IStateMachine, bool> CreateCondition(int conditionID)
         {
@@ -92,6 +101,16 @@ namespace FSM
         public override void SetDefaultState()
         {
             stateMachine.ChangeState((int)CharacterStateID.Idile);
+        }
+
+        public void EnableInputBuffer()
+        {
+            isInputBuffer = true;
+        }
+
+        public void DisableInputBuffer()
+        {
+            isInputBuffer = false;
         }
     }
 

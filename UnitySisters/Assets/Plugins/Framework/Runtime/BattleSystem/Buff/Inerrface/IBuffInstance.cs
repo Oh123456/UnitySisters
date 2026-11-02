@@ -15,6 +15,11 @@ namespace UnityFramework.BattleSystem
         public BuffData BuffData { get; }
 
         /// <summary>
+        /// 버프 지속 시간
+        /// </summary>
+        public float Duration { get; }
+
+        /// <summary>
         /// 인스턴스 존재 여부
         /// </summary>        
         public bool IsValid();
