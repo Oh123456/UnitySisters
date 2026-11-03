@@ -33,6 +33,57 @@ namespace UnityFramework.CommandTree.Editor
 
     internal sealed class CommandTreeGraphView : GraphView
     {
+        private sealed class CommandTraceEdge : Edge
+        {
+            private bool highlighted;
+            private Color traceColor;
+
+            public CommandTraceEdge() { }
+
+            public void SetTrace(bool value, Color color)
+            {
+                highlighted = value;
+                traceColor = color;
+                ApplyTraceStyle();
+            }
+
+            public override bool UpdateEdgeControl()
+            {
+                bool updated = base.UpdateEdgeControl();
+                if (updated)
+                    ApplyTraceStyle();
+                return updated;
+            }
+
+            protected override void OnCustomStyleResolved(ICustomStyle styles)
+            {
+                base.OnCustomStyleResolved(styles);
+                ApplyTraceStyle();
+            }
+
+            public override void OnSelected()
+            {
+                base.OnSelected();
+                ApplyTraceStyle();
+            }
+
+            public override void OnUnselected()
+            {
+                base.OnUnselected();
+                ApplyTraceStyle();
+            }
+
+            private void ApplyTraceStyle()
+            {
+                if (input == null || output == null)
+                    return;
+                edgeControl.inputColor = highlighted ? traceColor : input.portColor;
+                edgeControl.outputColor = highlighted ? traceColor : output.portColor;
+                edgeControl.edgeWidth = highlighted ? 4 : 2;
+                edgeControl.MarkDirtyRepaint();
+            }
+        }
+
         private sealed class CommandGraphNode : Node
         {
             private readonly Action<CommandNodeItem> selected;
@@ -109,6 +160,7 @@ namespace UnityFramework.CommandTree.Editor
         private Dictionary<string, Vector2> nodePositions;
         private string contextKey;
         private CommandRootNode rootNode;
+        private bool readOnly;
 
         public Action AddRootRequested;
         public Action<CommandNodeItem> AddChildRequested;
@@ -163,6 +215,45 @@ namespace UnityFramework.CommandTree.Editor
             StoreNodePositions();
         }
 
+        public void SetReadOnly(bool value)
+        {
+            readOnly = value;
+        }
+
+        public void SetTrace(IReadOnlyList<string> paths, string commandPath)
+        {
+            Color visitedColor = new Color(1.0f, 0.65f, 0.15f);
+            Color commandColor = new Color(0.25f, 1.0f, 0.55f);
+            foreach (KeyValuePair<string, CommandGraphNode> pair in nodes)
+            {
+                bool visited = false;
+                for (int index = 0; index < paths.Count; index++)
+                    if (paths[index] == pair.Key) { visited = true; break; }
+                SetOutline(pair.Value, visited, pair.Key == commandPath ? commandColor : visitedColor);
+            }
+            if (rootNode != null)
+                SetOutline(rootNode, paths.Count > 0, visitedColor);
+
+            foreach (Edge edge in edges)
+            {
+                bool visited = false;
+                string path = edge.userData as string;
+                for (int index = 0; index < paths.Count; index++)
+                    if (paths[index] == path) { visited = true; break; }
+                Color color = path == commandPath ? commandColor : visitedColor;
+                ((CommandTraceEdge)edge).SetTrace(visited, color);
+            }
+        }
+
+        private static void SetOutline(Node node, bool highlighted, Color color)
+        {
+            VisualElement border = node.Q("node-border") ?? node;
+            StyleColor borderColor = highlighted ? new StyleColor(color) : new StyleColor(StyleKeyword.Null);
+            StyleFloat width = highlighted ? new StyleFloat(3) : new StyleFloat(StyleKeyword.Null);
+            border.style.borderTopColor = border.style.borderBottomColor = border.style.borderLeftColor = border.style.borderRightColor = borderColor;
+            border.style.borderTopWidth = border.style.borderBottomWidth = border.style.borderLeftWidth = border.style.borderRightWidth = width;
+        }
+
         public void RefreshNode(string propertyPath, string identity, string keyName, string behaviorName)
         {
             if (string.IsNullOrEmpty(propertyPath) || !nodes.TryGetValue(propertyPath, out CommandGraphNode node))
@@ -174,6 +265,8 @@ namespace UnityFramework.CommandTree.Editor
 
         public override void BuildContextualMenu(ContextualMenuPopulateEvent menuEvent)
         {
+            if (readOnly)
+                return;
             VisualElement target = menuEvent.target as VisualElement;
             CommandGraphNode commandNode = target as CommandGraphNode ?? target?.GetFirstAncestorOfType<CommandGraphNode>();
             if (commandNode != null)
@@ -207,7 +300,8 @@ namespace UnityFramework.CommandTree.Editor
             node.SetPosition(new Rect(position, nodeSize));
             AddOccupiedPosition(position);
 
-            Edge edge = parentPort.ConnectTo(node.inputPort);
+            Edge edge = parentPort.ConnectTo<CommandTraceEdge>(node.inputPort);
+            edge.userData = item.propertyPath;
             edge.capabilities &= ~Capabilities.Deletable;
             edges.Add(edge);
             AddElement(edge);
@@ -225,6 +319,11 @@ namespace UnityFramework.CommandTree.Editor
         {
             if (keyEvent.keyCode != KeyCode.Delete && keyEvent.keyCode != KeyCode.Backspace)
                 return;
+            if (readOnly)
+            {
+                keyEvent.StopPropagation();
+                return;
+            }
 
             foreach (ISelectable selectable in selection)
             {

@@ -11,6 +11,12 @@ namespace FSM
         void EnableInputBuffer();
         void DisableInputBuffer();
         bool IsInputBuffer { get; }
+        bool IsCompletingState { get; }
+        void SetInputBufferAllowed(bool allowed);
+        void CancelInputBuffer();
+        event System.Action InputBufferStarted;
+        event System.Action InputBufferEnded;
+        event System.Action InputBufferCancelled;
     }
 
     [RequireComponent(typeof(Character))]
@@ -34,8 +40,12 @@ namespace FSM
         private CharacterFSMModel characterFSMModel = new CharacterFSMModel();
 
         public CharacterFSMModel CharacterFSMModel => characterFSMModel;
-        private bool isInputBuffer = false ;
-        public bool IsInputBuffer => isInputBuffer ;
+        public bool IsInputBuffer { get => characterFSMModel.isInputBuffer; }
+        public bool IsCompletingState { get => characterFSMModel.isCompletingState; }
+
+        public event System.Action InputBufferStarted;
+        public event System.Action InputBufferEnded;
+        public event System.Action InputBufferCancelled;
 
         protected override System.Func<IStateMachine, bool> CreateCondition(int conditionID)
         {
@@ -100,17 +110,50 @@ namespace FSM
 
         public override void SetDefaultState()
         {
-            stateMachine.ChangeState((int)CharacterStateID.Idile);
+            characterFSMModel.isCompletingState = true;
+            try
+            {
+                stateMachine.ChangeState((int)CharacterStateID.Idile);
+            }
+            finally
+            {
+                characterFSMModel.isCompletingState = false;
+            }
         }
 
         public void EnableInputBuffer()
         {
-            isInputBuffer = true;
+            if (!isActiveAndEnabled || !characterFSMModel.isInputBufferAllowed || IsInputBuffer)
+                return;
+
+            characterFSMModel.isInputBuffer = true;
+            InputBufferStarted?.Invoke();
         }
 
         public void DisableInputBuffer()
         {
-            isInputBuffer = false;
+            if (!IsInputBuffer)
+                return;
+
+            characterFSMModel.isInputBuffer = false;
+            InputBufferEnded?.Invoke();
+        }
+
+        public void SetInputBufferAllowed(bool allowed)
+        {
+            characterFSMModel.isInputBufferAllowed = allowed;
+        }
+
+        public void CancelInputBuffer()
+        {
+            characterFSMModel.isInputBuffer = false;
+            InputBufferCancelled?.Invoke();
+        }
+
+        protected override void UnregisterEvent()
+        {
+            base.UnregisterEvent();
+            CancelInputBuffer();
         }
     }
 

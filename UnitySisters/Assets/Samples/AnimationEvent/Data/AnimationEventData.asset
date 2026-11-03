@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7902a682ca582f14187209ef4b36dc42, type: 3}
+  m_Name: AnimationEventData
+  m_EditorClassIdentifier:
+  events:
+  - rid: 2726199525615599691
+  - rid: 2093981484138365035
+  - rid: 2093981484138365036
+  - rid: 2726199842925969486
+  references:
+    version: 2
+    RefIds:
+    - rid: 2093981484138365035
+      type: {class: InputBufferAnimationEventCommand, ns: , asm: Assembly-CSharp}
+      data:
+        evetType: 0
+        startTime: 0.45
+        endTime: 0.45
+        editorEventName:
+        operation: 0
+    - rid: 2093981484138365036
+      type: {class: InputBufferAnimationEventCommand, ns: , asm: Assembly-CSharp}
+      data:
+        evetType: 0
+        startTime: 0.95
+        endTime: 0.95
+        editorEventName:
+        operation: 1
+    - rid: 2726199525615599691
+      type: {class: AttackAnimationEventCommand, ns: UnitySisters, asm: Assembly-CSharp}
+      data:
+        evetType: 0
+        startTime: 0.3665768
+        endTime: 0.3665768
+        editorEventName:
+        attackKey: FistAttack
+    - rid: 2726199842925969486
+      type: {class: AttackEndAnimationEventCommand, ns: UnitySisters, asm: Assembly-CSharp}
+      data:
+        evetType: 0
+        startTime: 0.95
+        endTime: 0.95
+        editorEventName:

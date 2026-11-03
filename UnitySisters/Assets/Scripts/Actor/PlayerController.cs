@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
-using UnityFramework.CommandTree;
 using UnitySisters.Command;
 using UnitySisters.Controller;
 using UnitySisters.Model;
@@ -35,53 +34,26 @@ public partial class PlayerController : _3DModule.Controller.BaseController<Char
     protected override void OnEnable()
     {
         EnableInputSystems();
+        RegisterInputBufferEvents();
     }
 
     protected override void OnDisable()
     {
         DisableInputSystems();
+        ResetInput();
+        UnregisterInputBufferEvents();
     }
 
     private void FixedUpdate()
     {
-        if (currentControlCharacter == null)
-            return;
-
-        if (!currentControlCharacter.IsInputBuffer)
+        if (currentControlCharacter == null || !currentControlCharacter.isActiveAndEnabled)
         {
-            float currentTime = Time.time;
-            var commandTee = currentControlCharacter.CommandTree;
-            if (commandTee != null)
-            {
-                var currnetNode = commandTee.Root;
-                ICommandTreeNode perCommandNode = null;
-
-                while (inputBuffers.Count > 0)
-                {
-                    var buffer = inputBuffers.Dequeue();
-                    if (currentTime - buffer.time > 0.5f)
-                        continue;
-                    var nextNode = commandTee.FindChild(currnetNode, buffer.inputKeyType);
-                    if (nextNode == null)
-                        continue;
-                    //nextNode
-                    var behavior = nextNode.CommandBehavior;
-                    perCommandNode = behavior != null ? nextNode : perCommandNode;    
-                    currnetNode = nextNode;
-                }
-
-                if (currnetNode?.CommandBehavior != null)
-                    currnetNode.CommandBehavior.Apply(characterCommand);
-                else if (perCommandNode != null)
-                    perCommandNode.CommandBehavior.Apply(characterCommand);
-            }
-            else
-            {
-                inputBuffers.Clear();
-            }
+            ResetInput();
+            return;
         }
 
-
+        if (!currentControlCharacter.IsInputBuffer)
+            ProcessCommandInputs();
 
         Transform cameraTransform = cinemachineCamera.transform;
         Vector3 forward = cameraTransform.forward.normalized;
@@ -109,13 +81,24 @@ public partial class PlayerController : _3DModule.Controller.BaseController<Char
 
     public void ConnectCharacter(Character character)
     {
+        DisconnectCharacter();
         currentControlCharacter = character;
+        if (character == null)
+            return;
+
+        currentCharacterFSM = character.GetComponent<FSM.ICharacterFSMCotnroller>();
+        currentCharacterFSM?.CancelInputBuffer();
+        if (isActiveAndEnabled)
+            RegisterInputBufferEvents();
         cameraCotrolModel.carmeraTarget = character.CarmeraTarget;
         cinemachineCamera.Target.TrackingTarget = character.CarmeraTarget;
     }
 
     public void DisconnectCharacter()
     {
+        ResetInput();
+        UnregisterInputBufferEvents();
+        currentCharacterFSM = null;
         currentControlCharacter = null;
         cinemachineCamera.Target.TrackingTarget = null;
     }

@@ -7,6 +7,9 @@ namespace UnitySisters.Model
         [FSMParameter] public float moveValue;
         [UnityEngine.Serialization.FormerlySerializedAs("isGround")]
         [FSMParameter] public bool isFalling;
+        public bool isInputBuffer;
+        public bool isInputBufferAllowed;
+        public bool isCompletingState;
     }
 
 }

@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using FSM;
+using UnityFramework.CommandTree;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnitySisters;
@@ -18,6 +20,19 @@ public partial class PlayerController
 
     private PlayerActions playerActions;
     private Queue<InputBuffer> inputBuffers = new();
+    private InputKeyType queuedDirection;
+    private ICharacterFSMCotnroller currentCharacterFSM;
+    private bool hasCompletedInputBuffer;
+    private int completedInputCount;
+    private bool inputBufferEventsBound;
+    private System.Action<ICommandTreeNode, ICommandBehavior, bool> commandTraceObserver = null;
+
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    private void TraceCommandInput(ICommandTreeNode node, ICommandBehavior behavior, bool completed, int inputCount)
+    {
+        if (inputCount > 0)
+            commandTraceObserver?.Invoke(node, behavior, completed);
+    }
 
     private void EnableInputSystems()
     {
@@ -72,12 +87,105 @@ public partial class PlayerController
 
 
 
+    private void ProcessCommandInputs()
+    {
+        characterCommand.isAttackButton = false;
+        int count = hasCompletedInputBuffer ? completedInputCount : inputBuffers.Count;
+        hasCompletedInputBuffer = false;
+        completedInputCount = 0;
+        var tree = currentControlCharacter.CommandTree;
+        var node = tree?.Root;
+        ICommandBehavior behavior = null;
+
+        TraceCommandInput(node, null, false, count);
+
+        for (int i = 0; i < count; i++)
+        {
+            var input = inputBuffers.Dequeue();
+            var next = tree?.FindChild(node, input.inputKeyType);
+            if (next == null)
+                continue;
+
+            node = next;
+            if (node.CommandBehavior != null)
+                behavior = node.CommandBehavior;
+            TraceCommandInput(node, behavior, false, count);
+        }
+
+        if (inputBuffers.Count == 0)
+            queuedDirection = InputKeyType.None;
+
+        behavior?.Apply(characterCommand);
+        TraceCommandInput(node, behavior, true, count);
+    }
+
+    private void RegisterInputBufferEvents()
+    {
+        if (currentCharacterFSM == null || inputBufferEventsBound)
+            return;
+
+        currentCharacterFSM.InputBufferStarted += OnInputBufferStarted;
+        currentCharacterFSM.InputBufferEnded += OnInputBufferEnded;
+        currentCharacterFSM.InputBufferCancelled += OnInputBufferCancelled;
+        inputBufferEventsBound = true;
+    }
+
+    private void UnregisterInputBufferEvents()
+    {
+        if (currentCharacterFSM != null && inputBufferEventsBound)
+        {
+            currentCharacterFSM.InputBufferStarted -= OnInputBufferStarted;
+            currentCharacterFSM.InputBufferEnded -= OnInputBufferEnded;
+            currentCharacterFSM.InputBufferCancelled -= OnInputBufferCancelled;
+        }
+        inputBufferEventsBound = false;
+    }
+
+    private void OnInputBufferStarted()
+    {
+        OnInputBufferCancelled();
+    }
+
+    private void OnInputBufferEnded()
+    {
+        hasCompletedInputBuffer = true;
+        completedInputCount = inputBuffers.Count;
+        queuedDirection = InputKeyType.None;
+    }
+
+    private void OnInputBufferCancelled()
+    {
+        inputBuffers.Clear();
+        hasCompletedInputBuffer = false;
+        completedInputCount = 0;
+        queuedDirection = InputKeyType.None;
+    }
+
+    private void ResetInput()
+    {
+        currentCharacterFSM?.CancelInputBuffer();
+        OnInputBufferCancelled();
+        if (characterCommand == null)
+            return;
+
+        characterCommand.ClearData();
+        characterCommand.movementCommand.moveInput = Vector2.zero;
+        characterCommand.cameraRotation = Vector3.zero;
+    }
+
     #region KeyCallbacks
     private void MovePerformed(CallbackContext callbackContext)
     {
+        if (currentControlCharacter == null || !currentControlCharacter.isActiveAndEnabled)
+            return;
+
         Vector2 moveInput = callbackContext.ReadValue<Vector2>();
         characterCommand.movementCommand.moveInput = moveInput;
+        QueueDirectionInput(moveInput, false);
+    }
 
+    private void QueueDirectionInput(Vector2 moveInput, bool skipQueuedDirection)
+    {
         InputKeyType inputKeyType = InputKeyType.None;
 
         if (moveInput.y > 0.0f)
@@ -91,6 +199,10 @@ public partial class PlayerController
             inputKeyType |= InputKeyType.Left;
 
 
+        if (inputKeyType == InputKeyType.None || (skipQueuedDirection && queuedDirection == inputKeyType))
+            return;
+
+        queuedDirection = inputKeyType;
         inputBuffers.Enqueue(new InputBuffer()
         {
             inputKeyType = inputKeyType,
@@ -115,8 +227,10 @@ public partial class PlayerController
 
     private void AttackPerformed(CallbackContext callbackContext)
     {
-        characterCommand.isAttackButton = true;
+        if (currentControlCharacter == null || !currentControlCharacter.isActiveAndEnabled)
+            return;
 
+        QueueDirectionInput(characterCommand.movementCommand.moveInput, true);
         inputBuffers.Enqueue(new InputBuffer()
         {
             inputKeyType = InputKeyType.Attack,

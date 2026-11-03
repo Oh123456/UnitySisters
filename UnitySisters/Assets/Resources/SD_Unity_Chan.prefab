@@ -144,6 +144,7 @@ MonoBehaviour:
   animationController: {fileID: 7871517726820245889}
   movementController: {fileID: 2278072537853742993}
   characterFSMCotnroller: {fileID: 8877441911836399548}
+  commandData: {fileID: 11400000, guid: 4efcc95a3bf281a45afee5bc9078b6de, type: 2}
 --- !u!114 &8877441911836399548
 MonoBehaviour:
   m_ObjectHideFlags: 0

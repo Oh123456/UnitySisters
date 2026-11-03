@@ -11,39 +11,44 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67ec7446ae619ea4aa88612afabf10b6, type: 3}
   m_Name: UnitySistersCommandData
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   commandTree:
     root:
       key: 0
       value:
         rid: -2
       children:
-      - key: 0
-        value:
-          rid: -2
-        children:
-        - key: 4
-          value:
-            rid: -2
-          children: []
-        - key: 2
-          value:
-            rid: -2
-          children:
-          - key: 4
-            value:
-              rid: -2
-            children: []
       - key: 1
         value:
           rid: -2
         children:
-        - key: 4
+        - key: 16
           value:
-            rid: -2
+            rid: 2093981484138365033
+          children: []
+      - key: 16
+        value:
+          rid: 2093981484138365032
+        children: []
+      - key: 9
+        value:
+          rid: -2
+        children:
+        - key: 16
+          value:
+            rid: 2093981484138365034
           children: []
   references:
     version: 2
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
+    - rid: 2093981484138365032
+      type: {class: AttackCommandBehavior, ns: UnitySisters.Command, asm: Assembly-CSharp}
+      data:
+    - rid: 2093981484138365033
+      type: {class: AttackCommandBehavior, ns: UnitySisters.Command, asm: Assembly-CSharp}
+      data:
+    - rid: 2093981484138365034
+      type: {class: AttackCommandBehavior, ns: UnitySisters.Command, asm: Assembly-CSharp}
+      data:

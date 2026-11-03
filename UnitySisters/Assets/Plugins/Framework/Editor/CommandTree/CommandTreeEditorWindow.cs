@@ -25,10 +25,18 @@ namespace UnityFramework.CommandTree.Editor
         private HelpBox statusBox;
 
         private CommandData selectedData;
+        private Type selectedKeyType;
         private SerializedObject serializedData;
         private CommandNodeItem selectedNode;
         private Vector2 detailScrollPosition;
         private string selectedPropertyPath;
+        private readonly List<string> tracePaths = new List<string>();
+        private string traceCommandPath;
+        private Label traceLabel;
+        private Label modeLabel;
+        [SerializeField] private CommandData editData;
+
+        private bool CanEditData => !EditorApplication.isPlayingOrWillChangePlaymode;
 
         [MenuItem("UnityFramework/Command Tree/Editor", false, 0)]
         public static void OpenWindow()
@@ -45,6 +53,8 @@ namespace UnityFramework.CommandTree.Editor
             Undo.undoRedoPerformed += OnUndoRedo;
             EditorApplication.projectChanged -= OnProjectChanged;
             EditorApplication.projectChanged += OnProjectChanged;
+            EditorApplication.playModeStateChanged -= OnPlayModeChanged;
+            EditorApplication.playModeStateChanged += OnPlayModeChanged;
         }
 
         private void OnDisable()
@@ -52,6 +62,7 @@ namespace UnityFramework.CommandTree.Editor
             graphView?.SavePositions();
             Undo.undoRedoPerformed -= OnUndoRedo;
             EditorApplication.projectChanged -= OnProjectChanged;
+            EditorApplication.playModeStateChanged -= OnPlayModeChanged;
         }
 
         private void OnFocus()
@@ -62,7 +73,7 @@ namespace UnityFramework.CommandTree.Editor
 
         private void OnSelectionChange()
         {
-            if (Selection.activeObject is CommandData commandData)
+            if (CanEditData && Selection.activeObject is CommandData commandData)
                 SetData(commandData);
         }
 
@@ -73,21 +84,30 @@ namespace UnityFramework.CommandTree.Editor
             rootVisualElement.RegisterCallback<KeyDownEvent>(OnKeyDown, TrickleDown.TrickleDown);
 
             CreateToolbar();
+            traceLabel = new Label();
+            traceLabel.style.paddingLeft = 6;
+            rootVisualElement.Add(traceLabel);
             CreateContent();
 
             statusBox = new HelpBox("Select a CommandData asset.", HelpBoxMessageType.Info);
             statusBox.style.display = DisplayStyle.Flex;
             rootVisualElement.Add(statusBox);
 
-            if (selectedData == null && Selection.activeObject is CommandData commandData)
-                selectedData = commandData;
+            if (CanEditData && selectedData == null)
+                selectedData = editData != null ? editData : Selection.activeObject as CommandData;
 
             SetData(selectedData);
+            UpdateModeUI();
         }
 
         private void CreateToolbar()
         {
             Toolbar toolbar = new Toolbar();
+            modeLabel = new Label();
+            modeLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+            modeLabel.style.paddingLeft = 6;
+            modeLabel.style.paddingRight = 8;
+            toolbar.Add(modeLabel);
 
             dataField = new ObjectField("Data")
             {
@@ -98,7 +118,11 @@ namespace UnityFramework.CommandTree.Editor
             dataField.RegisterValueChangedCallback(changeEvent => SetData(changeEvent.newValue as CommandData));
             toolbar.Add(dataField);
 
-            createDataTypeButton = new ToolbarButton(CommandDataTypeGeneratorWindow.OpenWindow)
+            createDataTypeButton = new ToolbarButton(() =>
+            {
+                if (CanEditData)
+                    CommandDataTypeGeneratorWindow.OpenWindow();
+            })
             {
                 text = "Create Data Type"
             };
@@ -164,15 +188,62 @@ namespace UnityFramework.CommandTree.Editor
             detailContainer?.MarkDirtyRepaint();
         }
 
+        public void ShowObservedData(CommandData data, string controllerName)
+        {
+            if (CanEditData)
+                return;
+            if (selectedData != data || serializedData == null)
+                SetData(data);
+            graphView?.schedule.Execute(() => graphView.FrameAll()).ExecuteLater(1);
+            if (traceLabel != null)
+                traceLabel.text = $"Observing: {controllerName} | Waiting for command input";
+        }
+
+        public void ShowRuntimeTrace(CommandData data, IReadOnlyList<string> paths, string commandPath, string message)
+        {
+            if (CanEditData || selectedData != data)
+                return;
+            tracePaths.Clear();
+            for (int index = 0; index < paths.Count; index++)
+                tracePaths.Add(paths[index]);
+            traceCommandPath = commandPath;
+            graphView?.SetTrace(tracePaths, traceCommandPath);
+            if (traceLabel != null)
+                traceLabel.text = message;
+        }
+
+        public void ClearRuntimeTrace()
+        {
+            tracePaths.Clear();
+            traceCommandPath = null;
+            graphView?.SetTrace(tracePaths, null);
+            if (traceLabel != null)
+                traceLabel.text = CanEditData ? "Select a CommandData asset to edit." : "Select a controller to observe its command tree.";
+        }
+
         private void SetData(CommandData commandData)
         {
+            if (CanEditData)
+                editData = commandData;
             if (selectedData == commandData && serializedData != null)
             {
+                dataField?.SetValueWithoutNotify(selectedData);
                 RefreshGraph(false);
                 return;
             }
 
             selectedData = commandData;
+            selectedKeyType = null;
+            for (Type type = commandData == null ? null : commandData.GetType(); type != null; type = type.BaseType)
+            {
+                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(CommandData<>))
+                {
+                    selectedKeyType = type.GetGenericArguments()[0];
+                    break;
+                }
+            }
+            tracePaths.Clear();
+            traceCommandPath = null;
             serializedData = selectedData == null ? null : new SerializedObject(selectedData);
             selectedNode = null;
             selectedPropertyPath = null;
@@ -212,6 +283,7 @@ namespace UnityFramework.CommandTree.Editor
             if (selectedNode == null)
                 selectedPropertyPath = null;
             graphView.SetTree(GetDataContextKey(), serializedData == null ? null : rootItems, selectedPropertyPath, frameGraph);
+            graphView.SetTrace(tracePaths, traceCommandPath);
             UpdateButtonState();
             detailContainer?.MarkDirtyRepaint();
 
@@ -248,7 +320,7 @@ namespace UnityFramework.CommandTree.Editor
 
         private void AddRootNode()
         {
-            if (serializedData == null)
+            if (!CanEditData || serializedData == null)
                 return;
 
             serializedData.UpdateIfRequiredOrScript();
@@ -273,7 +345,7 @@ namespace UnityFramework.CommandTree.Editor
 
         private void AddNode(SerializedProperty childrenProperty)
         {
-            if (selectedData == null || serializedData == null || childrenProperty == null)
+            if (!CanEditData || selectedData == null || serializedData == null || childrenProperty == null)
                 return;
 
             Undo.RecordObject(selectedData, "Add Command Node");
@@ -304,7 +376,7 @@ namespace UnityFramework.CommandTree.Editor
 
         private void DeleteNode(CommandNodeItem item)
         {
-            if (selectedData == null || serializedData == null || item == null)
+            if (!CanEditData || selectedData == null || serializedData == null || item == null)
                 return;
 
             serializedData.UpdateIfRequiredOrScript();
@@ -474,11 +546,14 @@ namespace UnityFramework.CommandTree.Editor
             SerializedProperty valueProperty = nodeProperty.FindPropertyRelative("value");
 
             EditorGUI.BeginChangeCheck();
-            EditorGUILayout.PropertyField(keyProperty, new GUIContent("Key"), true);
-            EditorGUILayout.Space(4.0f);
-            DrawBehavior(valueProperty);
+            using (new EditorGUI.DisabledScope(!CanEditData))
+            {
+                EditorGUILayout.PropertyField(keyProperty, new GUIContent("Key"), true);
+                EditorGUILayout.Space(4.0f);
+                DrawBehavior(valueProperty);
+            }
 
-            if (EditorGUI.EndChangeCheck())
+            if (EditorGUI.EndChangeCheck() && CanEditData)
             {
                 serializedData.ApplyModifiedProperties();
                 EditorUtility.SetDirty(selectedData);
@@ -577,6 +652,8 @@ namespace UnityFramework.CommandTree.Editor
             switch (property.propertyType)
             {
                 case SerializedPropertyType.Enum:
+                    if (selectedKeyType != null && selectedKeyType.IsEnum)
+                        return Enum.ToObject(selectedKeyType, property.longValue).ToString().Replace(", ", " | ");
                     if (property.enumValueIndex >= 0 && property.enumValueIndex < property.enumDisplayNames.Length)
                         return property.enumDisplayNames[property.enumValueIndex];
                     return property.intValue.ToString();
@@ -678,7 +755,7 @@ namespace UnityFramework.CommandTree.Editor
 
         private void SaveData()
         {
-            if (selectedData == null || !ValidateData(true))
+            if (!CanEditData || selectedData == null || !ValidateData(true))
                 return;
 
             EditorUtility.SetDirty(selectedData);
@@ -699,6 +776,34 @@ namespace UnityFramework.CommandTree.Editor
             RefreshGraph(false);
         }
 
+        private void OnPlayModeChanged(PlayModeStateChange state)
+        {
+            if (state == PlayModeStateChange.ExitingEditMode)
+            {
+                editData = selectedData;
+                ClearRuntimeTrace();
+                SetData(null);
+            }
+            else if (state == PlayModeStateChange.EnteredEditMode)
+            {
+                ClearRuntimeTrace();
+                SetData(editData);
+            }
+            UpdateModeUI();
+        }
+
+        private void UpdateModeUI()
+        {
+            if (modeLabel != null)
+                modeLabel.text = CanEditData ? "Edit mode" : "Play observation (read only)";
+            dataField?.SetEnabled(CanEditData);
+            graphView?.SetReadOnly(!CanEditData);
+            UpdateButtonState();
+            detailContainer?.MarkDirtyRepaint();
+            if (CanEditData && traceLabel != null)
+                traceLabel.text = "Select a CommandData asset to edit.";
+        }
+
         private void OnProjectChanged()
         {
             if (selectedData == null)
@@ -709,7 +814,8 @@ namespace UnityFramework.CommandTree.Editor
 
         private void UpdateButtonState()
         {
-            bool hasData = selectedData != null && serializedData != null && GetRootProperty() != null;
+            bool hasData = CanEditData && selectedData != null && serializedData != null && GetRootProperty() != null;
+            createDataTypeButton?.SetEnabled(CanEditData);
             addRootButton?.SetEnabled(hasData);
             addChildButton?.SetEnabled(hasData && selectedNode != null);
             deleteButton?.SetEnabled(hasData && selectedNode != null);

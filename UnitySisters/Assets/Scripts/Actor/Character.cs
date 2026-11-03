@@ -30,7 +30,7 @@ public class Character : MonoBehaviour
     public MovementController MovementController => movementController;
 
     public bool IsInputBuffer => characterFSMCotnroller.IsInputBuffer;
-    public IReadOnlyCommandTree<InputKeyType> CommandTree => commandData.CommandTree;
+    public IReadOnlyCommandTree<InputKeyType> CommandTree => commandData != null ? commandData.CommandTree : null;
 
     private void Awake()
     {

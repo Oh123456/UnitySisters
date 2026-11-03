@@ -9,6 +9,9 @@ namespace UnitySisters.FSM.States
     {
         public override void Enter<T>(T owner)
         {
+            if (owner is ICharacterFSMCotnroller inputControl)
+                inputControl.SetInputBufferAllowed(true);
+
             if ((owner is CharacterFSMCotnroller controller) &&
                 controller.ControlOwner.TryGetComponent(out IMoveControl moveControl))
             {
@@ -19,6 +22,15 @@ namespace UnitySisters.FSM.States
 
         public override void Exit<T>(T owner)
         {
+            if (owner is ICharacterFSMCotnroller inputControl)
+            {
+                inputControl.SetInputBufferAllowed(false);
+                if (inputControl.IsCompletingState)
+                    inputControl.DisableInputBuffer();
+                else
+                    inputControl.CancelInputBuffer();
+            }
+
             if ((owner is CharacterFSMCotnroller controller) &&
                 controller.ControlOwner.TryGetComponent(out IMoveControl moveControl))
             {
