@@ -1,0 +1,5 @@
+{
+    "name": "Framework.BehaviorTree.Editor",
+    "references": ["Framework.BehaviorTree", "Framework.Editor"],
+    "includePlatforms": ["Editor"]
+}

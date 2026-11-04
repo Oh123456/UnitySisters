@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 916995bc5276f774ba689ac7807600fd, type: 3}
+  m_Name: ChasePlayer
+  m_EditorClassIdentifier: 
+  blackboard: {fileID: 11400000, guid: 38cefe5f8df7d5f40b3926247e0dcf59, type: 2}
+  rootId: chase
+  nodes:
+  - id: chase
+    name: Chase player
+    behavior:
+      rid: 2093981508562845772
+    children: []
+    decorators: []
+    services: []
+    position: {x: 300, y: 220}
+  references:
+    version: 2
+    RefIds:
+    - rid: 2093981508562845772
+      type: {class: ChaseTargetTaskData, ns: UnitySisters.BehaviorTree, asm: Assembly-CSharp}
+      data:
+        targetKey:
+          id: chase-target
+        stoppingDistance: 1.5

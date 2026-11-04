@@ -1,0 +1,7 @@
+{
+    "name": "Framework.BehaviorTree.Tests",
+    "references": ["Framework.BehaviorTree", "Framework.BehaviorTree.Editor"],
+    "includePlatforms": ["Editor"],
+    "optionalUnityReferences": ["TestAssemblies"],
+    "autoReferenced": false
+}
