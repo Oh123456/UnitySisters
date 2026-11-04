@@ -73,7 +73,11 @@ namespace UnityFramework.BehaviorTree.Editor
             toolbar.Add(dataField);
             newTreeButton = new ToolbarButton(() => CreateAsset<BehaviorTreeData>()) { text = "New Tree" }; toolbar.Add(newTreeButton);
             newBoardButton = new ToolbarButton(() => CreateAsset<BlackboardData>()) { text = "New Blackboard" }; toolbar.Add(newBoardButton);
-            addButton = new ToolbarButton(() => ShowAddMenu(new Vector2(300, 180))) { text = "Add node" }; toolbar.Add(addButton);
+            addButton = new ToolbarButton(() =>
+            {
+                Vector2 position = graph.contentViewContainer.WorldToLocal(graph.worldBound.center);
+                ShowAddMenu(position, addButton.worldBound, addButton);
+            }) { text = "Add node" }; toolbar.Add(addButton);
             saveButton = new ToolbarButton(Save) { text = "Validate / Save" }; toolbar.Add(saveButton);
             rootVisualElement.Add(toolbar);
 
@@ -178,13 +182,25 @@ namespace UnityFramework.BehaviorTree.Editor
 
         private void ShowAddMenu(Vector2 position)
         {
+            Vector2 anchor = graph.contentViewContainer.LocalToWorld(position);
+            ShowAddMenu(position, new Rect(anchor, Vector2.zero), graph);
+        }
+
+        private void ShowAddMenu(Vector2 position, Rect anchor, VisualElement target)
+        {
             if (!CanEdit || data == null) return;
-            GenericMenu menu = new GenericMenu();
-            menu.AddItem(new GUIContent("Selector"), false, () => AddNode(new SelectorNode(), position));
-            menu.AddItem(new GUIContent("Sequence"), false, () => AddNode(new SequenceNode(), position));
+            GenericDropdownMenu menu = CreateAddMenu(position);
+            menu.DropDown(anchor, target, false, false);
+        }
+
+        private GenericDropdownMenu CreateAddMenu(Vector2 position)
+        {
+            GenericDropdownMenu menu = new GenericDropdownMenu();
+            menu.AddItem("Selector", false, () => AddNode(new SelectorNode(), position));
+            menu.AddItem("Sequence", false, () => AddNode(new SequenceNode(), position));
             foreach (Type type in TypeCache.GetTypesDerivedFrom<TaskNodeData>())
-                if (CanCreate(type)) { Type selected = type; menu.AddItem(new GUIContent("Task/" + type.Name), false, () => AddNode((TaskNodeData)Activator.CreateInstance(selected, true), position)); }
-            menu.ShowAsContext();
+                if (CanCreate(type)) { Type selected = type; menu.AddItem("Task/" + type.Name, false, () => AddNode((TaskNodeData)Activator.CreateInstance(selected, true), position)); }
+            return menu;
         }
 
         private static bool CanCreate(Type type)
