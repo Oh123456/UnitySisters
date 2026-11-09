@@ -24,6 +24,23 @@ public class Character : MonoBehaviour
     [Header("CommandList")]
     [SerializeField] private UnitySistersCommandData commandData;
 
+    [Header("Sensors")]
+    [SerializeField] private string sensorKey;
+    [SerializeField] private Transform sensorEye;
+    [SerializeField] private Transform sensorEar;
+    private CharacterSensorModel sensorModel = new();
+    private CharacterPerceptionModel perceptionModel = new();
+    private CharacterAIBehaviorModel aiBehaviorModel = new();
+    public CharacterAIBehaviorModel AIBehaviorModel { get => aiBehaviorModel; }
+    public string SensorKey { get => sensorKey; }
+    public Transform SensorEye { get => sensorEye != null ? sensorEye : transform; }
+    public Transform SensorEar { get => sensorEar != null ? sensorEar : SensorEye; }
+    public CharacterSensorModel SensorModel { get => sensorModel; }
+    public CharacterPerceptionModel PerceptionModel { get => perceptionModel; }
+
+    private void OnDisable() { sensorModel.Release(); }
+    private void OnDestroy() { sensorModel.RemoveSubject(); }
+
     private MovementModel movementModel = null;
     private CharacterAnimationModel characterAnimationModel = null;
     public Transform CarmeraTarget => carmeraTarget;

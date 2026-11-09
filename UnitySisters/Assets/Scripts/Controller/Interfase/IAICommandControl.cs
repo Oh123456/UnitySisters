@@ -6,5 +6,7 @@ namespace UnitySisters.Controller.Interface
     {
         bool TryGetPosition(out Vector3 position);
         void RequestMovement(Vector3 direction);
+        bool RequestAttack();
+        void RequestRoam();
     }
 }

@@ -1,0 +1,96 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35f5538d6da920544bfe60e86e8d7131, type: 3}
+  m_Name: UtilityCharacterBlackboard
+  m_EditorClassIdentifier: 
+  keys:
+  - id: chase-target
+    name: Target
+    type: 4
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}
+  - id: sensor-result-count
+    name: SensorResultCount
+    type: 1
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}
+  - id: last-sensor-position
+    name: LastSensorPosition
+    type: 3
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}
+  - id: investigation-pending
+    name: InvestigationPending
+    type: 0
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}
+  - id: investigation-position
+    name: InvestigationPosition
+    type: 3
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}
+  - id: search-pending
+    name: SearchPending
+    type: 0
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}
+  - id: last-seen-position
+    name: LastSeenPosition
+    type: 3
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}
+  - id: can-attack
+    name: CanAttack
+    type: 0
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}
+  - id: attack-distance
+    name: AttackDistance01
+    type: 2
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}

@@ -13,16 +13,45 @@ MonoBehaviour:
   m_Name: ChasePlayer
   m_EditorClassIdentifier: 
   blackboard: {fileID: 11400000, guid: 38cefe5f8df7d5f40b3926247e0dcf59, type: 2}
-  rootId: chase
+  rootId: perception-selector
   nodes:
   - id: chase
     name: Chase player
     behavior:
       rid: 2093981508562845772
     children: []
+    decorators:
+    - rid: 2093981620649066583
+    services: []
+    position: {x: 324, y: 154}
+  - id: investigate
+    name: Investigate stimulus position
+    behavior:
+      rid: 2093981620649066580
+    children: []
+    decorators:
+    - rid: 2093981620649066584
+    services: []
+    position: {x: 600, y: 250}
+  - id: stop
+    name: 'No perception: stop'
+    behavior:
+      rid: 2093981620649066581
+    children: []
     decorators: []
     services: []
-    position: {x: 300, y: 220}
+    position: {x: 900, y: 250}
+  - id: perception-selector
+    name: Perception priority
+    behavior:
+      rid: 2093981620649066582
+    children:
+    - chase
+    - investigate
+    - stop
+    decorators: []
+    services: []
+    position: {x: 570, y: 10}
   references:
     version: 2
     RefIds:
@@ -32,3 +61,41 @@ MonoBehaviour:
         targetKey:
           id: chase-target
         stoppingDistance: 1.5
+    - rid: 2093981620649066580
+      type: {class: InvestigatePositionTaskData, ns: UnitySisters.BehaviorTree, asm: Assembly-CSharp}
+      data:
+        positionKey:
+          id: investigation-position
+        pendingKey:
+          id: investigation-pending
+        stoppingDistance: 0.5
+    - rid: 2093981620649066581
+      type: {class: StopMovementTaskData, ns: UnitySisters.BehaviorTree, asm: Assembly-CSharp}
+      data: 
+    - rid: 2093981620649066582
+      type: {class: SelectorNode, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data: 
+    - rid: 2093981620649066583
+      type: {class: BlackboardDecorator, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data:
+        abortMode: 3
+        keyId: chase-target
+        comparison: 6
+        expected:
+          boolValue: 1
+          intValue: 0
+          floatValue: 0
+          vectorValue: {x: 0, y: 0, z: 0}
+          objectValue: {fileID: 0}
+    - rid: 2093981620649066584
+      type: {class: BlackboardDecorator, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data:
+        abortMode: 3
+        keyId: investigation-pending
+        comparison: 0
+        expected:
+          boolValue: 1
+          intValue: 0
+          floatValue: 0
+          vectorValue: {x: 0, y: 0, z: 0}
+          objectValue: {fileID: 0}

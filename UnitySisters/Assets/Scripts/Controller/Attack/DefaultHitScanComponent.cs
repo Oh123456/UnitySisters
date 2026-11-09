@@ -36,6 +36,22 @@ namespace UnitySisters
                     if (hitResult.HasHitError())
                         continue;
 
+                    var sensorReceiver = raycastHits[i].transform.GetComponentInParent<_3DModule.Sensing.ISensorStimulusReceiver>();
+                    if (sensorReceiver != null)
+                    {
+                        var stimulus = new _3DModule.Sensing.SensorStimulus
+                        {
+                            kind = _3DModule.Sensing.StimulusKind.Hit,
+                            source = soureBattleComponent.transform,
+                            position = raycastHits[i].point,
+                            direction = raycastHits[i].point - soureBattleComponent.transform.position,
+                            strength = 1,
+                            time = Time.time,
+                            category = 1,
+                        };
+                        sensorReceiver.Receive(stimulus);
+                    }
+
                     ++hitCount;
 
                     Debug.Log(raycastHits[i].transform.name);

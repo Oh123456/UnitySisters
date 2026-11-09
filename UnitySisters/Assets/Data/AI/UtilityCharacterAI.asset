@@ -1,0 +1,220 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 916995bc5276f774ba689ac7807600fd, type: 3}
+  m_Name: UtilityCharacterAI
+  m_EditorClassIdentifier: 
+  blackboard: {fileID: 11400000, guid: 8b38b6e52e522b54c957662a900c5070, type: 2}
+  rootId: utility-character
+  nodes:
+  - id: utility-character
+    name: Perception utility
+    behavior:
+      rid: 2093981620649066635
+    children:
+    - attack
+    - chase
+    - search
+    - investigate
+    - roam
+    decorators: []
+    services: []
+    position: {x: 600, y: 30}
+    utilityScore:
+      constantScore: 0
+      combination: 0
+      considerations: []
+  - id: attack
+    name: Attack visible target
+    behavior:
+      rid: 2093981620649066636
+    children: []
+    decorators:
+    - rid: 2093981620649066637
+    services: []
+    position: {x: 0, y: 330}
+    utilityScore:
+      constantScore: 1
+      combination: 0
+      considerations:
+      - input: 1
+        constant: 0
+        floatKey:
+          id: attack-distance
+        intKey:
+          id: 
+        boolKey:
+          id: 
+        minimum: 0
+        maximum: 1
+        weight: 1
+        curve:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 1
+            inSlope: 0
+            outSlope: -0.19999999
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 0.8
+            inSlope: -0.19999999
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+  - id: chase
+    name: Chase detected target
+    behavior:
+      rid: 2093981620649066638
+    children: []
+    decorators:
+    - rid: 2093981620649066639
+    services: []
+    position: {x: 290, y: 330}
+    utilityScore:
+      constantScore: 0.6
+      combination: 0
+      considerations: []
+  - id: search
+    name: Search last seen position
+    behavior:
+      rid: 2093981620649066640
+    children: []
+    decorators:
+    - rid: 2093981620649066641
+    services: []
+    position: {x: 580, y: 330}
+    utilityScore:
+      constantScore: 0.5
+      combination: 0
+      considerations: []
+  - id: investigate
+    name: Investigate stimulus
+    behavior:
+      rid: 2093981620649066642
+    children: []
+    decorators:
+    - rid: 2093981620649066643
+    services: []
+    position: {x: 870, y: 330}
+    utilityScore:
+      constantScore: 0.45
+      combination: 0
+      considerations: []
+  - id: roam
+    name: Roam around search origin
+    behavior:
+      rid: 2093981620649066644
+    children: []
+    decorators: []
+    services: []
+    position: {x: 1160, y: 330}
+    utilityScore:
+      constantScore: 0.1
+      combination: 0
+      considerations: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 2093981620649066635
+      type: {class: UtilitySelectorNode, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data:
+        reevaluationInterval: 0.1
+        minimumHoldTime: 0.1
+        switchMargin: 0.05
+    - rid: 2093981620649066636
+      type: {class: AttackTargetTaskData, ns: UnitySisters.BehaviorTree, asm: Assembly-CSharp}
+      data: 
+    - rid: 2093981620649066637
+      type: {class: BlackboardDecorator, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data:
+        abortMode: 3
+        keyId: can-attack
+        comparison: 0
+        expected:
+          boolValue: 1
+          intValue: 0
+          floatValue: 0
+          vectorValue: {x: 0, y: 0, z: 0}
+          objectValue: {fileID: 0}
+    - rid: 2093981620649066638
+      type: {class: ChaseTargetTaskData, ns: UnitySisters.BehaviorTree, asm: Assembly-CSharp}
+      data:
+        targetKey:
+          id: chase-target
+        stoppingDistance: 0.6
+    - rid: 2093981620649066639
+      type: {class: BlackboardDecorator, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data:
+        abortMode: 3
+        keyId: chase-target
+        comparison: 6
+        expected:
+          boolValue: 1
+          intValue: 0
+          floatValue: 0
+          vectorValue: {x: 0, y: 0, z: 0}
+          objectValue: {fileID: 0}
+    - rid: 2093981620649066640
+      type: {class: InvestigatePositionTaskData, ns: UnitySisters.BehaviorTree, asm: Assembly-CSharp}
+      data:
+        positionKey:
+          id: last-seen-position
+        pendingKey:
+          id: search-pending
+        stoppingDistance: 0.6
+        progressTimeout: 3
+    - rid: 2093981620649066641
+      type: {class: BlackboardDecorator, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data:
+        abortMode: 3
+        keyId: search-pending
+        comparison: 0
+        expected:
+          boolValue: 1
+          intValue: 0
+          floatValue: 0
+          vectorValue: {x: 0, y: 0, z: 0}
+          objectValue: {fileID: 0}
+    - rid: 2093981620649066642
+      type: {class: InvestigatePositionTaskData, ns: UnitySisters.BehaviorTree, asm: Assembly-CSharp}
+      data:
+        positionKey:
+          id: investigation-position
+        pendingKey:
+          id: investigation-pending
+        stoppingDistance: 0.6
+        progressTimeout: 3
+    - rid: 2093981620649066643
+      type: {class: BlackboardDecorator, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data:
+        abortMode: 3
+        keyId: investigation-pending
+        comparison: 0
+        expected:
+          boolValue: 1
+          intValue: 0
+          floatValue: 0
+          vectorValue: {x: 0, y: 0, z: 0}
+          objectValue: {fileID: 0}
+    - rid: 2093981620649066644
+      type: {class: RoamTaskData, ns: UnitySisters.BehaviorTree, asm: Assembly-CSharp}
+      data: 

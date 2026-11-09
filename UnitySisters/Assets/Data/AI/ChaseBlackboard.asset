@@ -22,3 +22,39 @@ MonoBehaviour:
       floatValue: 0
       vectorValue: {x: 0, y: 0, z: 0}
       objectValue: {fileID: 0}
+  - id: sensor-result-count
+    name: SensorResultCount
+    type: 1
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}
+  - id: last-sensor-position
+    name: LastSensorPosition
+    type: 3
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}
+  - id: investigation-pending
+    name: InvestigationPending
+    type: 0
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}
+  - id: investigation-position
+    name: InvestigationPosition
+    type: 3
+    defaultValue:
+      boolValue: 0
+      intValue: 0
+      floatValue: 0
+      vectorValue: {x: 0, y: 0, z: 0}
+      objectValue: {fileID: 0}
