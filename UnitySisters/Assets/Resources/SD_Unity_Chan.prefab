@@ -188,6 +188,9 @@ MonoBehaviour:
   moveSpeed: 2
   moveRotation: 1
   isGravity: 1
+  groundLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
   groundCheckDistance: 0.2
   groundCheckOffset: {x: 0, y: 0.25, z: 0}
   groundCheckRadius: 0.23
@@ -196,6 +199,10 @@ MonoBehaviour:
   coyoteTime: 0.3
   jumpBetweenDelay: 0.1
   characterController: {fileID: 2227266558266102254}
+  slideLayerMask:
+    serializedVersion: 2
+    m_Bits: 192
+  slideSpeed: 2
 --- !u!114 &534596780136050508
 MonoBehaviour:
   m_ObjectHideFlags: 0

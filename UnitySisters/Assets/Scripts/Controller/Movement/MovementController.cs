@@ -24,6 +24,7 @@ namespace UnitySisters.Controller
 
         [Header("Gravity")]
         [SerializeField] private bool isGravity = true;
+        [SerializeField] private LayerMask groundLayerMask = 1;
         [SerializeField] private float groundCheckDistance = 1.0f;
         [SerializeField] private Vector3 groundCheckOffset = Vector3.zero;
         [SerializeField] private float groundCheckRadius = 0.23f;
@@ -112,42 +113,39 @@ namespace UnitySisters.Controller
         public void UpdateGravity()
         {
             ref Vector3 velocity = ref movementModel.refVelocity;
-            if (Physics.SphereCast(movementModel.controlObject.transform.position + groundCheckOffset, groundCheckRadius, Vector3.down, out RaycastHit hitInfo, groundCheckDistance, 1, QueryTriggerInteraction.Ignore))
-            {
-                #region 레거시
-                //if (!isGrounded)
-                //{
-                //    Physics.Raycast(transform.position + groundCheckOffset, Vector3.down, out RaycastHit groundHitInfo, groundCheckDistance, 1);
-                //    Vector3 hitdir = groundHitInfo.point - transform.position;
-                //    controller.Move(groundHitInfo.point);
-                //}
-                //else if (velocity.y < 0.0f)
-                //{
-                //    velocity.y = 0.0f;
-                //} 
-                #endregion
-
-                if (movementModel.isGrounded && velocity.y < 0.0f)
-                {
-                    velocity.y = 0.0f;
-                    jumpState.ChangeState(JumpState.Standing);
-                }
-
-                movementModel.isGrounded = true;
-            }
+            bool grounded = velocity.y <= 0.0f && Physics.SphereCast(
+                movementModel.controlObject.transform.position + groundCheckOffset,
+                groundCheckRadius, Vector3.down, out RaycastHit hitInfo,
+                groundCheckDistance, groundLayerMask, QueryTriggerInteraction.Ignore) &&
+                hitInfo.normal.y > 0.5f &&
+                hitInfo.distance <= Mathf.Max(0.0f, groundCheckOffset.y - groundCheckRadius) + 0.03f;
+            SetGrounded(grounded);
+            if (grounded)
+                velocity.y = 0.0f;
             else
             {
-                velocity += (Physics.gravity * Time.fixedDeltaTime);
-                movementModel.isGrounded = false;
-                // 코여테타임
+                velocity += Physics.gravity * Time.fixedDeltaTime;
                 if (jumpState.CurrentState == JumpState.Standing)
                 {
                     currentCoyoteTime += Time.deltaTime;
                     if (coyoteTime <= currentCoyoteTime)
-                    {
                         SubtractumpCount();
-                    }
                 }
+            }
+        }
+
+        protected bool IsGroundLayer(int layer)
+        {
+            return (groundLayerMask.value & (1 << layer)) != 0;
+        }
+
+        protected void SetGrounded(bool grounded)
+        {
+            movementModel.isGrounded = grounded;
+            if (grounded)
+            {
+                jumpState.ChangeState(JumpState.Standing);
+                currentCoyoteTime = 0.0f;
             }
         }
 

@@ -79,10 +79,9 @@ public class Character : MonoBehaviour
             return;
 
         Vector3 velocity = movementModel.Velocity;
-        float falling = velocity.y;
         velocity.y = 0.0f;
         model.moveValue = velocity.sqrMagnitude;
-        model.isFalling = !falling.Equals(0.0f);
+        model.isFalling = !movementModel.isGrounded;
     }
 
     private void UpdateAnimationModel()
@@ -97,7 +96,7 @@ public class Character : MonoBehaviour
 
         Vector3 velocity = movementModel.Velocity;
         characterAnimationModel.yValue = velocity.y;
-        characterAnimationModel.isFalling = !characterAnimationModel.yValue.Equals(0.0f);
+        characterAnimationModel.isFalling = !movementModel.isGrounded;
         characterAnimationModel.additionalJunmp = movementModel.additionalJump;
     }
 

@@ -9,6 +9,9 @@ namespace UnitySisters.Model
         private Vector3 velocity;
         public bool isGrounded;
         public bool additionalJump;
+        public Collider slideContact;
+        public Vector3 slideDirection;
+        public float slideContactTime = float.NegativeInfinity;
 
         public Vector3 Velocity
         {
