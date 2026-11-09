@@ -1,0 +1,7 @@
+{
+    "name": "3DModule.Sensing.Tests",
+    "references": ["3DModule.Sensing", "Framework"],
+    "includePlatforms": ["Editor"],
+    "optionalUnityReferences": ["TestAssemblies"],
+    "autoReferenced": false
+}

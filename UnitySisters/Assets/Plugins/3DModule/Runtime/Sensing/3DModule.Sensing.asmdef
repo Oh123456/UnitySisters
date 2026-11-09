@@ -1,0 +1,5 @@
+{
+    "name": "3DModule.Sensing",
+    "references": ["Framework"],
+    "autoReferenced": true
+}
