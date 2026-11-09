@@ -374,6 +374,7 @@ namespace UnityFramework.BehaviorTree.Editor
             foreach (BehaviorNodeMemory memory in controller.Model.nodes)
             {
                 if (!treeNodes.TryGetValue(memory.definition.ID, out TreeNode node)) continue;
+                node.title = memory.definition.Name;
                 Color? color = GetColor(memory);
                 VisualElement border = node.Q("node-border") ?? node;
                 StyleColor styleColor = color.HasValue ? new StyleColor(color.Value) : new StyleColor(StyleKeyword.Null);
@@ -381,6 +382,18 @@ namespace UnityFramework.BehaviorTree.Editor
                 border.style.borderTopColor = border.style.borderBottomColor = border.style.borderLeftColor = border.style.borderRightColor = styleColor;
                 border.style.borderTopWidth = border.style.borderBottomWidth = border.style.borderLeftWidth = border.style.borderRightWidth = width;
                 foreach (TreeEdge edge in treeEdges) if (((string[])edge.userData)[1] == node.id) edge.SetColor(color);
+            }
+            foreach (BehaviorNodeMemory memory in controller.Model.nodes)
+            {
+                if (memory.utility == null) continue;
+                for (int i = 0; i < memory.children.Length; i++)
+                {
+                    var child = controller.Model.nodes[memory.children[i]].definition;
+                    if (!treeNodes.TryGetValue(child.ID, out TreeNode visual)) continue;
+                    visual.title = $"{child.Name} [{memory.utility.scores[i]:0.###}]";
+                    visual.tooltip = $"{memory.utility.reasons[i]}" + (memory.utility.selected == i ?
+                        (controller.Model.nodes[memory.children[i]].active ? " | EXECUTING" : " | LAST SELECTED") : "");
+                }
             }
         }
 

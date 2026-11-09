@@ -7,6 +7,7 @@ namespace UnityFramework.BehaviorTree
     {
         private readonly BehaviorTreeModel model;
         private bool ticking;
+        private bool forceUtilityEvaluation;
         public IReadOnlyBlackboard Blackboard { get => model.blackboard; }
         public IBlackboardWriter BlackboardWriter { get => model.blackboard; }
         public bool IsRunning { get => model.running; }
@@ -29,7 +30,7 @@ namespace UnityFramework.BehaviorTree
             model.dirty = true;
             model.lastStatus = null;
             foreach (BehaviorNodeMemory node in model.nodes)
-            { node.status = null; node.exitReason = null; node.conditionsPassed = null; }
+            { node.status = null; node.exitReason = null; node.conditionsPassed = null; node.utility?.Reset(); }
             Blackboard.KeyChanged += OnKeyChanged;
         }
 
@@ -43,7 +44,7 @@ namespace UnityFramework.BehaviorTree
 
         private void OnKeyChanged(string id) { model.dirty = true; }
 
-        public void RequestEvaluation() { model.dirty = true; }
+        public void RequestEvaluation() { model.dirty = true; forceUtilityEvaluation = true; }
 
         public void Tick(float deltaTime)
         {
@@ -59,6 +60,7 @@ namespace UnityFramework.BehaviorTree
                 {
                     model.dirty = false;
                     EvaluateObservers(model.root);
+                    forceUtilityEvaluation = false;
                 }
                 if (model.running) model.lastStatus = TickNode(model.root);
             }
@@ -86,6 +88,7 @@ namespace UnityFramework.BehaviorTree
                 if (!ConditionsPass(node)) { node.status = BehaviorStatus.Failure; return BehaviorStatus.Failure; }
                 node.active = true;
                 node.childIndex = 0;
+                node.utility?.Reset();
                 node.exitReason = null;
                 Array.Clear(node.serviceElapsed, 0, node.serviceElapsed.Length);
                 for (int service = 0; service < node.definition.Services.Count; service++)
@@ -103,6 +106,7 @@ namespace UnityFramework.BehaviorTree
             }
             BehaviorStatus result;
             if (node.task is TaskNode action) result = action.Tick(model.context, (TaskNodeData)node.definition.Behavior, node.taskMemory);
+            else if (node.definition.Behavior is UtilitySelectorNode utility) result = TickUtility(node, utility);
             else
             {
                 bool selector = node.definition.Behavior is SelectorNode;
@@ -155,6 +159,21 @@ namespace UnityFramework.BehaviorTree
                 { ExitSubtree(index, BehaviorExitReason.Aborted); return; }
             }
 
+            if (node.utility != null)
+            {
+                if (forceUtilityEvaluation) node.utility.force = true;
+                for (int i = 0; i < node.children.Length; i++)
+                {
+                    var decorators = model.nodes[node.children[i]].definition.Decorators;
+                    for (int d = 0; d < decorators.Count; d++)
+                    {
+                        Decorator decorator = decorators[d];
+                        if (decorator.AbortMode == BehaviorAbortMode.LowerPriority || decorator.AbortMode == BehaviorAbortMode.Both)
+                            node.utility.force = true;
+                    }
+                }
+            }
+
             if (node.definition.Behavior is SelectorNode)
             {
                 for (int child = 0; child < node.childIndex; child++)
@@ -182,12 +201,82 @@ namespace UnityFramework.BehaviorTree
                     BehaviorAbortMode mode = node.definition.Decorators[decorator].AbortMode;
                     if (mode == BehaviorAbortMode.LowerPriority || mode == BehaviorAbortMode.Both) return true;
                 }
+            if (node.utility != null) return false;
             foreach (int child in node.children)
             {
                 if (ObserveLowerPriority(child)) return true;
                 if (node.definition.Behavior is SequenceNode && model.nodes[child].status != BehaviorStatus.Success) break;
             }
             return false;
+        }
+
+        private BehaviorStatus TickUtility(BehaviorNodeMemory node, UtilitySelectorNode settings)
+        {
+            var runtime = node.utility;
+            runtime.elapsed += model.context.DeltaTime;
+            runtime.held += model.context.DeltaTime;
+            if (runtime.selected >= 0 && !model.nodes[node.children[runtime.selected]].active) runtime.force = true;
+            if (runtime.force || runtime.elapsed >= settings.Interval || runtime.selected < 0)
+            {
+                runtime.force = false; runtime.elapsed = 0;
+                Array.Clear(runtime.failed, 0, runtime.failed.Length);
+                for (int i = 0; i < node.children.Length; i++)
+                {
+                    var child = model.nodes[node.children[i]];
+                    Array.Clear(runtime.samples[i], 0, runtime.samples[i].Length);
+                    runtime.scores[i] = 0;
+                    if (!ConditionsPass(child)) { runtime.reasons[i] = UtilityReason.ConditionsRejected; continue; }
+                    if (!UtilityEvaluator.Evaluate(child.definition.UtilityScore, model.blackboard, runtime.samples[i], out float score))
+                    { runtime.reasons[i] = UtilityReason.InvalidInput; continue; }
+                    runtime.scores[i] = score;
+                    runtime.reasons[i] = score > 0 ? UtilityReason.LowerScore : UtilityReason.ZeroScore;
+                }
+                int best = BestUtility(node);
+                int current = runtime.selected;
+                bool currentValid = current >= 0 && runtime.scores[current] > 0 && model.nodes[node.children[current]].active;
+                if (best != current && currentValid && best >= 0)
+                {
+                    if (runtime.held < settings.MinimumHoldTime)
+                    { runtime.reasons[best] = UtilityReason.MinimumHold; best = current; }
+                    else if (runtime.scores[best] <= runtime.scores[current] + settings.SwitchMargin)
+                    { runtime.reasons[best] = UtilityReason.SwitchMargin; best = current; }
+                }
+                SelectUtility(node, best);
+                if (!model.running || !node.active) return BehaviorStatus.Failure;
+            }
+            while (runtime.selected >= 0)
+            {
+                int selected = runtime.selected;
+                BehaviorStatus result = TickNode(node.children[selected]);
+                if (!model.running || !node.active) return BehaviorStatus.Failure;
+                if (result != BehaviorStatus.Failure) return result;
+                runtime.failed[selected] = true; runtime.reasons[selected] = UtilityReason.Failed;
+                SelectUtility(node, BestUtility(node));
+                if (!model.running || !node.active) return BehaviorStatus.Failure;
+            }
+            return BehaviorStatus.Failure;
+        }
+
+        private int BestUtility(BehaviorNodeMemory node)
+        {
+            var runtime = node.utility;
+            int best = runtime.selected;
+            if (best < 0 || runtime.failed[best] || runtime.scores[best] <= 0) best = -1;
+            for (int i = 0; i < runtime.scores.Length; i++)
+                if (!runtime.failed[i] && runtime.scores[i] > 0 && (best < 0 || runtime.scores[i] > runtime.scores[best])) best = i;
+            return best;
+        }
+
+        private void SelectUtility(BehaviorNodeMemory node, int selected)
+        {
+            var runtime = node.utility;
+            if (runtime.selected != selected)
+            {
+                if (runtime.selected >= 0) ExitSubtree(node.children[runtime.selected], BehaviorExitReason.Aborted);
+                runtime.selected = selected; runtime.held = 0;
+            }
+            node.childIndex = selected >= 0 ? selected : node.children.Length;
+            if (selected >= 0) runtime.reasons[selected] = UtilityReason.Selected;
         }
 
         private void ExitSubtree(int index, BehaviorExitReason reason)

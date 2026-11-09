@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 
 namespace UnityFramework.BehaviorTree.Editor
 {
-    internal sealed class BehaviorTreeEditorWindow : EditorWindow
+    internal sealed partial class BehaviorTreeEditorWindow : EditorWindow
     {
         [SerializeField] private BehaviorTreeData editData;
         private BehaviorTreeData data;
@@ -198,6 +198,7 @@ namespace UnityFramework.BehaviorTree.Editor
             GenericDropdownMenu menu = new GenericDropdownMenu();
             menu.AddItem("Selector", false, () => AddNode(new SelectorNode(), position));
             menu.AddItem("Sequence", false, () => AddNode(new SequenceNode(), position));
+            menu.AddItem("Utility Selector", false, () => AddNode(new UtilitySelectorNode(), position));
             foreach (Type type in TypeCache.GetTypesDerivedFrom<TaskNodeData>())
                 if (CanCreate(type)) { Type selected = type; menu.AddItem("Task/" + type.Name, false, () => AddNode((TaskNodeData)Activator.CreateInstance(selected, true), position)); }
             return menu;
@@ -252,7 +253,7 @@ namespace UnityFramework.BehaviorTree.Editor
         private void DrawDetails()
         {
             detailScroll = EditorGUILayout.BeginScrollView(detailScroll);
-            BehaviorNodeData definition = data?.FindNode(selectedID);
+            BehaviorNodeData definition = data != null ? data.FindNode(selectedID) : null;
             if (definition == null) { EditorGUILayout.HelpBox("Select a node to inspect.", MessageType.Info); EditorGUILayout.EndScrollView(); return; }
             using (SerializedObject serialized = new SerializedObject(data))
             {
@@ -269,6 +270,7 @@ namespace UnityFramework.BehaviorTree.Editor
                         if (GUILayout.Button("Change task type")) SerializeReferenceTypeSelectorWindow.Open(typeof(TaskNodeData), serialized.targetObjects, behavior.propertyPath);
                         EditorGUILayout.PropertyField(behavior, new GUIContent("Task settings"), true);
                     }
+                    if (definition.Behavior is UtilitySelectorNode) DrawUtility(serialized, behavior, definition);
                     DrawAttachments<Decorator>(node.FindPropertyRelative("decorators"), "Decorators");
                     if (!(definition.Behavior is TaskNodeData)) DrawAttachments<Service>(node.FindPropertyRelative("services"), "Services");
                     EditorGUILayout.LabelField("Child execution order", EditorStyles.boldLabel);

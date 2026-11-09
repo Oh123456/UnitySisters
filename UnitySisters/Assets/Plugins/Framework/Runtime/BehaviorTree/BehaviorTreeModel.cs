@@ -17,6 +17,7 @@ namespace UnityFramework.BehaviorTree
         internal BehaviorStatus? status;
         internal BehaviorExitReason? exitReason;
         internal bool? conditionsPassed;
+        internal UtilityRuntime utility;
 
         internal BehaviorNodeMemory(BehaviorNodeData definition, Dictionary<string, int> indices)
         {
@@ -50,7 +51,11 @@ namespace UnityFramework.BehaviorTree
             Dictionary<string, int> indices = new Dictionary<string, int>();
             for (int index = 0; index < data.Nodes.Count; index++) indices.Add(data.Nodes[index].ID, index);
             nodes = new BehaviorNodeMemory[data.Nodes.Count];
-            for (int index = 0; index < nodes.Length; index++) nodes[index] = new BehaviorNodeMemory(data.Nodes[index], indices);
+            for (int index = 0; index < nodes.Length; index++)
+            {
+                nodes[index] = new BehaviorNodeMemory(data.Nodes[index], indices);
+                if (data.Nodes[index].Behavior is UtilitySelectorNode) nodes[index].utility = new UtilityRuntime(data.Nodes[index], data);
+            }
             root = indices[data.RootID];
         }
     }

@@ -14,6 +14,8 @@ namespace UnityFramework.BehaviorTree
         [SerializeReference] private List<Decorator> decorators = new List<Decorator>();
         [SerializeReference] private List<Service> services = new List<Service>();
         [SerializeField] private Vector2 position;
+        [SerializeField] private UtilityScoreSettings utilityScore = new();
+        internal UtilityScoreSettings UtilityScore { get => utilityScore; }
         internal string ID { get => id; }
         internal string Name { get => name; set => name = value; }
         internal BehaviorNode Behavior { get => behavior; }
@@ -101,8 +103,21 @@ namespace UnityFramework.BehaviorTree
                     if (node.Services.Count != 0) errors.Add($"{node.Name}: attach Services to a composite node.");
                     task.ValidateDefinition(blackboard, errors);
                 }
-                else if (node.Behavior is SelectorNode || node.Behavior is SequenceNode)
-                { if (node.Children.Count == 0) errors.Add($"{node.Name}: composites need children."); }
+                else if (node.Behavior is SelectorNode || node.Behavior is SequenceNode || node.Behavior is UtilitySelectorNode)
+                {
+                    if (node.Children.Count == 0) errors.Add($"{node.Name}: composites need children.");
+                    if (node.Behavior is UtilitySelectorNode utility)
+                    {
+                        utility.Validate(errors);
+                        foreach (string childID in node.Children)
+                        {
+                            var child = FindNode(childID);
+                            if (child == null) continue;
+                            if (child.UtilityScore == null) errors.Add("Utility child has missing score settings.");
+                            else child.UtilityScore.Validate(blackboard, errors);
+                        }
+                    }
+                }
                 else errors.Add($"{node.Name}: unsupported node type.");
                 foreach (Decorator decorator in node.Decorators)
                 {

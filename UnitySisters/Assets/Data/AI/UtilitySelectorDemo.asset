@@ -1,0 +1,211 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 916995bc5276f774ba689ac7807600fd, type: 3}
+  m_Name: UtilitySelectorDemo
+  m_EditorClassIdentifier: 
+  blackboard: {fileID: 11400000, guid: 87106f90b10aa3a4e8d7dc8ec8bbdf03, type: 2}
+  rootId: utility-root
+  nodes:
+  - id: utility-root
+    name: Curve score selector
+    behavior:
+      rid: 2093981620649066607
+    children:
+    - utility-option-1
+    - utility-option-2
+    - utility-option-3
+    - utility-option-4
+    decorators: []
+    services: []
+    position: {x: 500, y: 50}
+    utilityScore:
+      constantScore: 0
+      combination: 0
+      considerations: []
+  - id: utility-option-1
+    name: High input option (Wait)
+    behavior:
+      rid: 2093981620649066608
+    children: []
+    decorators: []
+    services: []
+    position: {x: 100, y: 350}
+    utilityScore:
+      constantScore: 0.05
+      combination: 0
+      considerations:
+      - input: 1
+        constant: 0
+        floatKey:
+          id: utility-input
+        intKey:
+          id: 
+        boolKey:
+          id: 
+        minimum: 0
+        maximum: 1
+        weight: 1
+        curve:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 0
+            inSlope: 0
+            outSlope: 0.8
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 0.8
+            inSlope: 0.8
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+  - id: utility-option-2
+    name: Low input option (Wait)
+    behavior:
+      rid: 2093981620649066609
+    children: []
+    decorators: []
+    services: []
+    position: {x: 370, y: 350}
+    utilityScore:
+      constantScore: 0.05
+      combination: 0
+      considerations:
+      - input: 1
+        constant: 0
+        floatKey:
+          id: utility-input
+        intKey:
+          id: 
+        boolKey:
+          id: 
+        minimum: 0
+        maximum: 1
+        weight: 1
+        curve:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 1
+            inSlope: 0
+            outSlope: -1
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 0
+            inSlope: -1
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+  - id: utility-option-3
+    name: Requested option (Wait)
+    behavior:
+      rid: 2093981620649066610
+    children: []
+    decorators: []
+    services: []
+    position: {x: 640, y: 350}
+    utilityScore:
+      constantScore: 0.05
+      combination: 0
+      considerations:
+      - input: 3
+        constant: 0
+        floatKey:
+          id: 
+        intKey:
+          id: 
+        boolKey:
+          id: utility-request
+        minimum: 0
+        maximum: 1
+        weight: 1
+        curve:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 0
+            inSlope: 0
+            outSlope: 0.9
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 0.9
+            inSlope: 0.9
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+  - id: utility-option-4
+    name: Fixed fallback (Wait)
+    behavior:
+      rid: 2093981620649066611
+    children: []
+    decorators: []
+    services: []
+    position: {x: 910, y: 350}
+    utilityScore:
+      constantScore: 0.05
+      combination: 0
+      considerations: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 2093981620649066607
+      type: {class: UtilitySelectorNode, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data:
+        reevaluationInterval: 0.2
+        minimumHoldTime: 0.3
+        switchMargin: 0.05
+    - rid: 2093981620649066608
+      type: {class: WaitTaskData, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data:
+        duration: 10000
+    - rid: 2093981620649066609
+      type: {class: WaitTaskData, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data:
+        duration: 10000
+    - rid: 2093981620649066610
+      type: {class: WaitTaskData, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data:
+        duration: 10000
+    - rid: 2093981620649066611
+      type: {class: WaitTaskData, ns: UnityFramework.BehaviorTree, asm: Framework.BehaviorTree}
+      data:
+        duration: 10000
